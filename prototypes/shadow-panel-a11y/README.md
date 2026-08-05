@@ -28,7 +28,7 @@ host↔chrome tab-order seam are exercised for real.
 | P2 | Every ARIA IDREF is tree-local; nothing references across the host↔chrome seam | ✅ validated (axe clean) |
 | P3 | Panel = native `<dialog>`. `showModal()` traps natively; `show()` (non-modal) needs manual initial focus + own Esc handling — both routes share one close path (`cancel` event forwarded) | ✅ validated |
 | P4 | Mount contract: `mount(container) → dispose`; adapter runs dispose then **force-clears** the container on close | ✅ validated |
-| P5 | Announcements via `aria-live` region **inside** the shadow root, plain-text updates only; adapter also owns a visually-hidden **light-DOM fallback** region (toggleable here for SR comparison) | ✅ mechanics validated; SR verdict pending (HITL) |
+| P5 | Announcements via `aria-live` region **inside** the shadow root, plain-text updates only; adapter also owns a visually-hidden **light-DOM fallback** region (toggleable here for SR comparison) | ✅ validated — VO speaks both placements; shadow-internal is the default, fallback kept for untested SR combos |
 | P6 | Focus bookkeeping drills through `shadowRoot.activeElement` (`deepActiveElement()`); focus restore prefers the origin element but falls back to the panel's toggle when the origin was disposed or is `<body>` | ✅ validated |
 | P7 | Strip = `role="toolbar"` with roving tabindex + Arrow-key navigation; separators are `role="separator"` between plugin clusters | ✅ validated |
 | P8 | All chrome wrapped in a labelled `<aside>` (complementary landmark) inside the shadow root, so SR landmark navigation can find and skip the toolbar | ✅ added after axe flagged chrome as landmark-less |
@@ -43,7 +43,18 @@ host↔chrome tab-order seam are exercised for real.
 - **Programmatic close** (plugin's "Send feedback" button): panel closes, container clears, focus restored to the toggle.
 - **Live region text lands**: "Feedback panel opened" / "Feedback sent" observed in the shadow live region.
 
-## Screen-reader script (the HITL half — pending)
+## Screen-reader results (VoiceOver, macOS, 2026-08-05)
+
+Run by the map's driver against the script below, Safari and Chrome:
+
+- **Both browsers pass the full walkthrough** — strip semantics, panel open/close announcements, mounted-form labels and hints, command announcements, focus restore. Chrome needed no extra configuration.
+- **Step 8 verdict (decides P5): both live-region placements are spoken in both browsers.** The shadow-internal region is therefore the **default**; the light-DOM fallback stays available as the escape hatch for SR combos not yet tested (NVDA/JAWS — the combos where the research found divergence).
+- **Modal mode**: focus is trapped in the panel; Tab can still exit to the browser address bar — the known general `<dialog>` property (research §3), not a shadow issue. No mitigation needed.
+
+Untested: NVDA and JAWS on Windows. The fallback region + the P5 toggle exist precisely so that
+matrix can be run later without code changes.
+
+## Screen-reader script (as run)
 
 VoiceOver (macOS), Safari **and** Chrome. Toggle the two spike checkboxes to cover the matrix
 (modal × live-region-placement):
