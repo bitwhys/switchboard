@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Host app — Switchboard shadow-panel a11y spike</title>
+<style>
+  /* Deliberately opinionated host-page styles: the chrome must NOT inherit these. */
+  body { font-family: Georgia, serif; font-size: 20px; line-height: 1.7; color: #223; background: #faf7f0; margin: 0; padding: 2rem 3rem 12rem; }
+  h1, h2 { color: #7a1f1f; }
+  a { color: #0645ad; }
+  button { font-family: inherit; font-size: 1.2em; background: hotpink; border: 4px dashed lime; }
+  input, textarea, select { font-size: 1.1em; border: 3px double purple; }
+  label { font-style: italic; }
+</style>
+</head>
+<body>
+  <main>
+  <h1>Acme Storefront (host page)</h1>
+  <p>
+    An arbitrary application page with its own hostile styling and its own
+    interactive content. The Switchboard toolbar is injected at the bottom
+    right. <a href="#newsletter">Skip to the newsletter form</a>.
+  </p>
+
+  <h2 id="newsletter">Newsletter</h2>
+  <form>
+    <p>
+      <label for="host-email">Email address</label><br />
+      <input id="host-email" type="email" autocomplete="email" />
+    </p>
+    <p><button type="submit">Subscribe</button></p>
+  </form>
+
+  <p>
+    Tab order expectation: host content first (link, email field, subscribe
+    button), then the toolbar strip, because the host element is appended
+    last in DOM order.
+  </p>
+  </main>
+
+  <!-- axe-core for the in-page audit (CDN; spike-only dependency) -->
+  <script src="https://cdn.jsdelivr.net/npm/axe-core@4.10.3/axe.min.js"></script>
+
+  <script type="module">
+/* ============================================================================
+ * Switchboard shadow-panel a11y spike
+ *
+ * Validates the panel-chrome ownership list from the toolbar placement
+ * resolution (switchboard#7 §5) using the patterns locked by the Shadow DOM
+ * a11y research (switchboard#4 / docs/shadow-dom-a11y-patterns.md):
+ *
+ *   P1  single OPEN shadow root for all chrome
+ *   P2  every ARIA IDREF is tree-local (never spans the host↔chrome seam)
+ *   P3  panel = native <dialog>; showModal() for modal, show() for non-modal
+ *       with `inert`-free page access; Esc + focus restore in both modes
+ *   P4  plugin mount contract: mount(container) → dispose; adapter
+ *       force-clears the container on close
+ *   P5  announcements: aria-live region INSIDE the shadow root by default,
+ *       with a light-DOM fallback region the adapter also owns (toggleable
+ *       here so screen-reader testing can compare both)
+ *   P6  focus bookkeeping drills through shadowRoot.activeElement
+ *   P7  strip = role="toolbar" with roving tabindex + arrow-key navigation
+ * ========================================================================= */
+
+/* ---------- P6: deep focus drilling ---------- */
+function deepActiveElement() {
+  let el = document.activeElement;
+  while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+  return el;
+}
+
+/* ---------- Adapter bootstrap: host element + light-DOM live fallback ---------- */
+const host = document.createElement('switchboard-toolbar');
+document.body.appendChild(host);
+
+// P5 fallback: adapter-owned, visually hidden, in the HOST tree so no
+// live-region semantics ever depend on shadow-boundary behavior.
+const lightLive = document.createElement('div');
+lightLive.setAttribute('aria-live', 'polite');
+lightLive.style.cssText =
+  'position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap;';
+document.body.appendChild(lightLive);
+
+/* ---------- P1: single open shadow root ---------- */
+const root = host.attachShadow({ mode: 'open' });
+root.innerHTML = `
+  <style>
+    /* Chrome styles are isolated from the host page by the shadow boundary. */
+    :host { all: initial; font-family: system-ui, sans-serif; font-size: 14px;
+            color: #e6e6e6; position: fixed; bottom: 16px; right: 16px; z-index: 2147483000; }
+    * { box-sizing: border-box; }
+    button { font: inherit; color: inherit; background: none; border: none; cursor: pointer; }
+    button:focus-visible, [tabindex]:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+      outline: 2px solid #7cc4ff; outline-offset: 2px; border-radius: 4px;
+    }
+
+    .strip { display: flex; align-items: center; gap: 4px; background: #1b1d22;
+             border: 1px solid #34363d; border-radius: 10px; padding: 6px 8px;
+             box-shadow: 0 4px 16px rgba(0,0,0,.35); }
+    .strip button { padding: 6px 10px; border-radius: 6px; position: relative; }
+    .strip button:hover { background: #2a2d34; }
+    .strip button[aria-expanded="true"] { background: #34495e; }
+    .sep { width: 1px; align-self: stretch; background: #34363d; margin: 2px 3px; }
+    .badge { position: absolute; top: -4px; right: -4px; background: #e5484d; color: white;
+             font-size: 10px; line-height: 1; padding: 2px 4px; border-radius: 8px; }
+
+    dialog.panel { position: fixed; inset: auto 16px 64px auto; margin: 0; width: 320px;
+                   background: #22242a; color: #e6e6e6; border: 1px solid #34363d;
+                   border-radius: 12px; padding: 0; box-shadow: 0 8px 32px rgba(0,0,0,.5); }
+    dialog.panel::backdrop { background: rgba(0,0,0,.25); }
+    .panel-header { display: flex; align-items: center; gap: 8px; padding: 10px 12px;
+                    border-bottom: 1px solid #34363d; }
+    .panel-header h2 { font-size: 14px; margin: 0; flex: 1; font-weight: 600; }
+    .panel-body { padding: 12px; }
+    .panel-body label { display: block; margin: 8px 0 2px; color: #b8bcc4; }
+    .panel-body input, .panel-body textarea, .panel-body select {
+      width: 100%; background: #16171b; color: inherit; border: 1px solid #34363d;
+      border-radius: 6px; padding: 6px 8px; font: inherit; }
+    .panel-body .hint { font-size: 12px; color: #9aa0aa; margin-top: 2px; }
+    .panel-body button.action { background: #1d4ed8; color: white; border-radius: 6px;
+                                padding: 6px 12px; margin-top: 10px; }
+
+    .devbox { margin-top: 8px; background: #101114; border: 1px dashed #45484f;
+              border-radius: 8px; padding: 8px 10px; font-size: 12px; color: #b8bcc4;
+              max-width: 340px; }
+    .devbox legend, .devbox strong { color: #e6e6e6; }
+    .devbox output { display: block; white-space: pre-wrap; word-break: break-word;
+                     font-family: ui-monospace, monospace; margin-top: 4px; }
+    .vh { position: absolute; width: 1px; height: 1px; overflow: hidden;
+          clip-path: inset(50%); white-space: nowrap; }
+  </style>
+
+  <!-- P8: all chrome lives in a labelled landmark so screen-reader landmark
+       navigation can find (and skip) the toolbar from anywhere in the host page. -->
+  <aside aria-label="Switchboard developer tools">
+
+  <!-- P7: toolbar strip. Clusters per contributing plugin, role=separator between. -->
+  <div class="strip" role="toolbar" aria-label="Switchboard toolbar" id="strip">
+    <!-- cluster: metrics plugin -->
+    <button type="button" id="cmd-refresh" aria-describedby="tip-refresh">
+      ⟳<span class="vh">Refresh metrics</span><span class="badge" id="badge" hidden></span>
+    </button>
+    <span class="vh" id="tip-refresh">Runs the metrics.refresh command</span>
+    <button type="button" id="toggle-metrics" aria-haspopup="dialog" aria-expanded="false" aria-controls="panel-metrics">
+      📊<span class="vh">Metrics panel</span>
+    </button>
+    <div class="sep" role="separator" aria-orientation="vertical"></div>
+    <!-- cluster: feedback plugin -->
+    <button type="button" id="toggle-feedback" aria-haspopup="dialog" aria-expanded="false" aria-controls="panel-feedback">
+      💬<span class="vh">Feedback panel</span>
+    </button>
+  </div>
+
+  <!-- P3: panels are native <dialog>s inside the same shadow root -->
+  <dialog class="panel" id="panel-metrics" aria-labelledby="panel-metrics-title">
+    <div class="panel-header">
+      <h2 id="panel-metrics-title">Metrics</h2>
+      <button type="button" class="close" data-close="panel-metrics">✕<span class="vh">Close Metrics panel</span></button>
+    </div>
+    <div class="panel-body" id="mount-metrics"><!-- P4: managed container --></div>
+  </dialog>
+
+  <dialog class="panel" id="panel-feedback" aria-labelledby="panel-feedback-title">
+    <div class="panel-header">
+      <h2 id="panel-feedback-title">Feedback</h2>
+      <button type="button" class="close" data-close="panel-feedback">✕<span class="vh">Close Feedback panel</span></button>
+    </div>
+    <div class="panel-body" id="mount-feedback"><!-- P4: managed container --></div>
+  </dialog>
+
+  <!-- P5: default live region lives INSIDE the shadow root, plain-text updates only -->
+  <div aria-live="polite" class="vh" id="shadow-live"></div>
+
+  <!-- Spike-only instrumentation (not part of the proposed chrome) -->
+  <fieldset class="devbox">
+    <legend>Spike controls</legend>
+    <label><input type="checkbox" id="opt-modal" /> Open panels modally (showModal + backdrop)</label>
+    <label><input type="checkbox" id="opt-lightlive" /> Announce via light-DOM fallback region</label>
+    <button type="button" id="run-axe" class="action">Run axe audit</button>
+    <strong>Deep focus:</strong> <output id="focus-out">—</output>
+    <strong>axe:</strong> <output id="axe-out">not run</output>
+  </fieldset>
+
+  </aside>
+`;
+
+const $ = (id) => root.getElementById(id);
+
+/* ---------- P5: announcements ---------- */
+function announce(text) {
+  const region = $('opt-lightlive').checked ? lightLive : $('shadow-live');
+  region.textContent = '';
+  // separate task so repeated identical messages re-announce
+  setTimeout(() => { region.textContent = text; }, 30);
+}
+
+/* ---------- P7: roving tabindex on the strip ---------- */
+const strip = $('strip');
+const stripButtons = () => [...strip.querySelectorAll('button')];
+stripButtons().forEach((b, i) => (b.tabIndex = i === 0 ? 0 : -1));
+strip.addEventListener('keydown', (e) => {
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  const btns = stripButtons();
+  const i = btns.indexOf(root.activeElement);
+  if (i < 0) return;
+  const next = btns[(i + (e.key === 'ArrowRight' ? 1 : -1) + btns.length) % btns.length];
+  btns.forEach((b) => (b.tabIndex = -1));
+  next.tabIndex = 0;
+  next.focus();
+  e.preventDefault();
+});
+
+/* ---------- P3 + P4: panel open/close with mount lifecycle ---------- */
+const panels = {
+  'panel-metrics': { toggle: $('toggle-metrics'), mountPoint: $('mount-metrics'), mount: mountMetricsPlugin, title: 'Metrics', dispose: null, restoreTo: null },
+  'panel-feedback': { toggle: $('toggle-feedback'), mountPoint: $('mount-feedback'), mount: mountFeedbackPlugin, title: 'Feedback', dispose: null, restoreTo: null },
+};
+
+function openPanel(id) {
+  const p = panels[id];
+  const dialog = $(id);
+  p.restoreTo = deepActiveElement();                    // P6: deep, not document.activeElement
+  p.dispose = p.mount(p.mountPoint) ?? null;            // P4: mount on open
+  if ($('opt-modal').checked) dialog.showModal();       // native trap + top layer + Esc
+  else {
+    dialog.show();
+    // non-modal <dialog> gets no autofocus behavior: send focus to the first
+    // focusable element in the panel (header close button comes first)
+    dialog.querySelector('button, input, textarea, select, [tabindex]')?.focus();
+  }
+  p.toggle.setAttribute('aria-expanded', 'true');
+  announce(`${p.title} panel opened`);
+}
+
+function closePanel(id, { announceIt = true } = {}) {
+  const p = panels[id];
+  const dialog = $(id);
+  if (!dialog.open) return;
+  p.dispose?.();                                        // P4: dispose on close…
+  p.dispose = null;
+  p.mountPoint.replaceChildren();                       // …and adapter force-clears
+  dialog.close();
+  p.toggle.setAttribute('aria-expanded', 'false');
+  if (announceIt) announce(`${p.title} panel closed`);
+  // focus restore: prefer where the user came from, but that element may have
+  // been disposed with the panel (or be <body>) — fall back to the toggle
+  const target = p.restoreTo?.isConnected && p.restoreTo !== document.body ? p.restoreTo : p.toggle;
+  target.focus?.();
+  p.restoreTo = null;
+}
+
+for (const id of Object.keys(panels)) {
+  panels[id].toggle.addEventListener('click', () =>
+    $(id).open ? closePanel(id) : openPanel(id));
+  // modal Esc arrives as `cancel`; route it through the same close path
+  $(id).addEventListener('cancel', (e) => { e.preventDefault(); closePanel(id); });
+}
+// non-modal Esc: <dialog>.show() has no built-in Esc handling
+root.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  for (const id of Object.keys(panels)) {
+    if ($(id).open && $(id).contains(root.activeElement)) { closePanel(id); return; }
+  }
+});
+root.addEventListener('click', (e) => {
+  const btn = e.target.closest?.('[data-close]');
+  if (btn) closePanel(btn.dataset.close);
+});
+
+/* ---------- Fake plugins (P4 consumers, P2 tree-local wiring) ---------- */
+function mountMetricsPlugin(container) {
+  container.innerHTML = `
+    <label for="m-metric">Metric</label>
+    <select id="m-metric">
+      <option>Largest Contentful Paint</option>
+      <option>Cumulative Layout Shift</option>
+      <option>Interaction to Next Paint</option>
+    </select>
+    <label for="m-threshold">Alert threshold (ms)</label>
+    <input id="m-threshold" type="number" value="2500" aria-describedby="m-threshold-hint" />
+    <p class="hint" id="m-threshold-hint">Announces when the metric exceeds this value.</p>
+    <button type="button" class="action" id="m-refresh">Refresh now</button>
+  `;
+  const onRefresh = () => {
+    refreshCount += 1;
+    updateBadge();
+    announce(`Metrics refreshed, ${refreshCount} total`);
+  };
+  container.querySelector('#m-refresh').addEventListener('click', onRefresh);
+  return () => container.querySelector('#m-refresh')?.removeEventListener('click', onRefresh);
+}
+
+function mountFeedbackPlugin(container) {
+  container.innerHTML = `
+    <label for="f-note">Your feedback</label>
+    <textarea id="f-note" rows="3" aria-describedby="f-note-hint"></textarea>
+    <p class="hint" id="f-note-hint">Sent to the project’s feedback queue.</p>
+    <button type="button" class="action" id="f-send">Send feedback</button>
+  `;
+  container.querySelector('#f-send').addEventListener('click', () => {
+    announce('Feedback sent');
+    // programmatic close must restore focus just like user-initiated close
+    closePanel('panel-feedback', { announceIt: false });
+  });
+  return () => {};
+}
+
+/* ---------- Badge (command-item property fed by plugin state) ---------- */
+let refreshCount = 0;
+function updateBadge() {
+  const badge = $('badge');
+  badge.hidden = refreshCount === 0;
+  badge.textContent = String(refreshCount);
+  $('cmd-refresh').querySelector('.vh').textContent =
+    `Refresh metrics${refreshCount ? `, ${refreshCount} refreshes` : ''}`;
+}
+$('cmd-refresh').addEventListener('click', () => {
+  refreshCount += 1;
+  updateBadge();
+  announce(`Metrics refreshed, ${refreshCount} total`);
+});
+
+/* ---------- Spike instrumentation ---------- */
+const focusOut = $('focus-out');
+const describe = (el) => !el ? 'none'
+  : `${el.tagName.toLowerCase()}${el.id ? '#' + el.id : ''}${el.getRootNode() instanceof ShadowRoot ? ' (in shadow)' : ' (light DOM)'}`;
+setInterval(() => { focusOut.textContent = describe(deepActiveElement()); }, 300);
+
+$('run-axe').addEventListener('click', async () => {
+  $('axe-out').textContent = 'running…';
+  try {
+    const res = await window.axe.run(document, { resultTypes: ['violations'] });
+    const lines = res.violations.map((v) =>
+      `${v.impact}: ${v.id} ×${v.nodes.length} — ${v.nodes.map((n) => n.target.join(' ')).join('; ')}`);
+    $('axe-out').textContent = lines.length ? lines.join('\n') : '0 violations';
+    console.log('AXE_RESULT ' + JSON.stringify({
+      violations: res.violations.map((v) => ({ id: v.id, impact: v.impact, targets: v.nodes.map((n) => n.target) })),
+      passes: res.passes.length,
+    }));
+  } catch (err) {
+    $('axe-out').textContent = 'axe failed: ' + err.message;
+    console.log('AXE_RESULT ' + JSON.stringify({ error: String(err) }));
+  }
+});
+  </script>
+</body>
+</html>
