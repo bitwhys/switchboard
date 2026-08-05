@@ -75,3 +75,13 @@ Domain vocabulary owned by the `dom.inspector` capability, not the kernel — th
 - **Hydration** — fetching element detail on demand instead of shipping it eagerly. In-page, hydration is the live node itself (resolve on the service); over the bridge, it is one inspector-owned describe command whose **facets** (attributes, geometry, a11y, description, …) name exactly what the caller wants. The facet menu versions with the capability semver.
 - **Element description** — the durable, serializable anchor for an element that must be findable after a reload (selector and text hints, obtained as a hydration facet). Deliberately *not* an ElementReference: descriptions are fuzzy and best-effort, resolved by whoever stored them.
   - The boundary rule: *handle for the living page → ElementReference; anchor that must survive reload → element description.*
+
+## Annotations (feedback plugin)
+
+Domain vocabulary owned by the feedback reference plugin and its `feedback.sink` capability — not the kernel.
+
+- **Annotation** — a human-authored, route-scoped piece of feedback, optionally anchored to an element by an element description (never an ElementReference). Wire-legal by construction; the unit agents list and resolve.
+- **Annotation lifecycle** — `draft` → `open` → `resolved`. Drafts are private working state that survive a reload; submission (draft → open) is the moment an annotation becomes visible to agents and eligible for egress; resolution requires a resolution note saying what was done.
+- **Outbox** — the storage-held set of annotations awaiting action or egress. Working state, never a system of record: an annotation's durable home is wherever a sink puts it.
+- **Sink** — the egress seam: a capability (`feedback.sink`) an application may provide to carry submitted annotations to an external system of record. Probed, never required — absent a sink, the loop still closes locally in the outbox.
+- **Agent loop** — the flagship workflow the feedback plugin exists to prove: a human annotates, the submission surfaces to agents, an agent acts on the code, and resolution flows back to the human. Creation is human-only; the agent surface is read and resolve.
