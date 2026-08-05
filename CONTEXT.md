@@ -35,3 +35,15 @@ Defined by their bridge semantics: Command, Event, and Context can cross to agen
 - **Behavioral hints** (annotations) — MCP-shaped, untrusted advisories on a command (read-only, destructive, idempotent). Hints for UX and agent policy, never enforcement.
 - **Bridge grant** — a `bridge:*` permission. Default-closed and all-or-nothing per primitive family: without the grant a plugin's registrations don't exist at the bridge (not listed, not dispatchable). Attribution is by *act*: the bridge forwards what a granted plugin registered, emitted, or wrote — never by name ownership.
 - **Reserved namespace** — `switchboard.*` names belong to the kernel itself; no plugin, including first-party reference plugins, may register there.
+
+## Toolbar adapter
+
+- **Toolbar service** — the toolbar adapter's contribution surface: a Service named `toolbar`, backed by the like-named capability. The *only* door for placement; the kernel carries no placement vocabulary. Plugins that must have toolbar presence `require` it; plugins that merely prefer it probe with `tryGet` and stay headless-safe.
+- **Placement contract version** — the `toolbar` capability's semver, which versions the placement vocabulary itself (not the npm package). The contract belongs to the capability name: any adapter that honestly provides `toolbar@<semver>` is a toolbar, and plugins cannot tell implementations apart.
+- **Command item** — a contributed trigger in the toolbar strip that is presentation only: it *binds* a registered command (or toggles a panel) and never carries behavior or visibility logic of its own. A command-bound item inherits the command's `when` predicate and vanishes with it.
+- **Panel** — a contributed surface the plugin renders into; the adapter owns its chrome and open/closed state. Panel toggling is presentation, not a command — agents cannot steer the toolbar UI in v1.
+- **Panel chrome** — everything around a panel's body: frame, header, close affordance, sizing, focus management, and screen-reader announcements. Owned entirely by the adapter's shared UI layer; a plugin's world begins and ends at the container it is handed.
+- **Mount contract** — the framework-agnostic seam between adapter and panel body: DOM container in, Disposable out; mounted on open, disposed on close. Surviving state belongs to Context or storage, never the mounted DOM.
+- **Badge** — a property of a command item (count or dot), fed by a Context key the plugin names. Not a contribution kind.
+- **Strip** — the toolbar's single contributable region in v1; implicit (no `slot` field exists yet — `slot` and `group` are reserved future placement fields).
+- **Cluster** — the unit of strip ordering: each plugin's items render adjacently, clusters follow plugin activation order (application-developer owned), and an item's `order` number positions it only within its own plugin's cluster. Cross-plugin interleaving is deliberately unsayable.
