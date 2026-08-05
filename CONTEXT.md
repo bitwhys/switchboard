@@ -7,7 +7,7 @@ The ubiquitous language for Switchboard, an open-source, pluggable in-applicatio
 - **Kernel** — the framework-agnostic runtime (`core`) that hosts plugins and owns the four primitives' registries. Has no domain vocabulary of its own and never imports UI frameworks.
 - **Plugin** — a unit of trusted code installed by the application developer, packaged as a single definition object: a static **Manifest** plus an imperative `setup` entry point. Identified by a **Plugin id** (`publisher.name`).
 - **Manifest** — the static, statically-extractable half of a plugin: identity, its **capability** declarations (`provides`/`requires`), its **permissions**, and its **activation hints**. Readable without executing code; its schema (and the permission vocabulary) versions with the kernel API — there is no separate manifest version.
-- **Permission** — a manifest-declared claim (`area:action`) naming a surface the kernel or bridge can gate. Every permission carries an **enforcement status**: *enforced* (the kernel/bridge honors it today — the `bridge:*` family) or *advisory* (descriptive in v1, gateable under future sandboxing — the page-world family). Unknown permission strings are carried but grant nothing.
+- **Permission** — a manifest-declared claim (`area:action`) naming a surface the kernel or bridge can gate. Every permission carries an **enforcement status**: *enforced* (the kernel/bridge honors it today — the `bridge:*` family and `storage:use`) or *advisory* (descriptive in v1, gateable under future sandboxing — the page-world family). Unknown permission strings are carried but grant nothing.
 - **Activation hint** — a manifest entry naming a condition that may wake the plugin; hints are additive (any one suffices). v1 defines exactly one: `eager`, the default. Carried but unused in v1.
 - **PluginApi** — the handle a plugin's `setup` receives; the only door into the kernel. Grouped by primitive. (Deliberately *not* called "PluginContext" — the word **Context** belongs exclusively to the primitive.)
 - **Disposable** — the universal teardown token: every registration returns one, and the kernel tracks them all, so plugin deactivation cleans up everything the kernel can see.
@@ -27,6 +27,15 @@ Defined by their bridge semantics: Command, Event, and Context can cross to agen
 
 - **Capability** — an opaque named claim a plugin `provides` or `requires`, optionally versioned. By convention a capability name coincides with the service or context key it promises.
 - **Checked, not solved** — Switchboard's capability posture: a flat presence-and-version check with loud named errors; no dependency resolver, no activation reordering. At most one installed provider per capability name.
+
+## Storage
+
+Kernel infrastructure (alongside Disposable), not a fifth primitive: nothing is registered, listed, or `when`-gated, and storage never crosses the bridge — agent visibility only happens when a plugin deliberately publishes stored data through a Command or Context key.
+
+- **Storage area** — the persistence façade a plugin sees: an async, JSON-valued key-value store bound invisibly to the plugin's id. A plugin can never name, choose, or escape its area, and there is no cross-plugin storage access — shared persistent state is a Service.
+  - The boundary rule: *state that must survive a reload → storage; state others must see → egress (bridge or network), never storage — Switchboard is not a system of record.*
+- **Storage engine** — the swappable backend behind every storage area, chosen by the application developer at kernel construction and invisible to plugins. Physical isolation of areas is the engine's job; the engine seam is public API, so backends beyond the built-in defaults need no kernel changes.
+- **Defensive read** — the documented convention for stored-value shape: storage is untrusted input, validated on read, discarded or defaulted on mismatch. The kernel guarantees only that a plugin's area stays *reachable* across kernel upgrades; the shape of what is inside belongs to the plugin (no kernel migration machinery).
 
 ## Surfaces & the bridge
 
