@@ -43,7 +43,13 @@ Kernel infrastructure (alongside Disposable), not a fifth primitive: nothing is 
 - **Visibility predicate** (`when`) — a pure function over Context deciding whether a command is *listed* (in UI surfaces and the agent tool list). Gates listing, never dispatch, and is never a security boundary.
 - **Behavioral hints** (annotations) — MCP-shaped, untrusted advisories on a command (read-only, destructive, idempotent). Hints for UX and agent policy, never enforcement.
 - **Bridge grant** — a `bridge:*` permission. Default-closed and all-or-nothing per primitive family: without the grant a plugin's registrations don't exist at the bridge (not listed, not dispatchable). Attribution is by *act*: the bridge forwards what a granted plugin registered, emitted, or wrote — never by name ownership.
-- **Reserved namespace** — `switchboard.*` names belong to the kernel itself; no plugin, including first-party reference plugins, may register there.
+- **Reserved namespace** — `switchboard.*` names belong to the kernel itself; no plugin, including first-party reference plugins, may register there. The bridge's **built-in tools** (`switchboard.status`, `switchboard.context.read`, `switchboard.events.tail`) live here: always present, they work — or fail with actionable errors — whether or not a page is connected.
+- **Wire protocol** — the bridge's page-side language: Switchboard's own minimal envelope of typed JSON messages (never MCP, never JSON-RPC), correlated request/response by echoed id, defined as plain objects so any adapter channel can carry them.
+- **Bridge protocol version** — the plain integer gating the wire handshake, bumped only on breaking wire changes. Exact match or clean refusal; the kernel API version travels alongside for diagnostics only. The only real-world mismatch is a stale tab, and the remedy is always reload.
+- **Snapshot sync** — the registry-sync model: the page always sends its complete current registry (on connect and, debounced, on any change); the bridge diffs against canonical state and applies only real deltas to the agent-facing surface. The wire stays dumb, drift is impossible, and reconnect needs no special resync.
+- **Tail buffer** — the bridge's bounded ring buffer of recent events, served to agents as a poll tool. A recording kept by the bridge *as a subscriber* — kernel Events stay strictly ephemeral; the buffer survives page reloads and dies with the dev server.
+- **Active tab** — the one connected page the agent-facing surface mirrors and invocations target: the most recently focused tab, falling back to most recently connected. Every connection carries a stable **tab id** (reserved for future explicit targeting; surfaced in status today).
+- **Grace period** — the short debounce before a departed page's commands leave the tool list, sized so a page reload reconnects invisibly. Only a genuinely absent page shrinks the list — which then tells the truth: built-ins only.
 
 ## Toolbar adapter
 
