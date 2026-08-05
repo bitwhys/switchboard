@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Switchboard — bridge transport spike</title>
+    <style>
+      :root { color-scheme: light dark; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      body { margin: 2rem; line-height: 1.5; }
+      h1 { font-size: 1.1rem; }
+      .badge { display: inline-block; padding: 0.1rem 0.5rem; border-radius: 999px; font-size: 0.8rem; }
+      .ok { background: #16a34a22; color: #16a34a; border: 1px solid #16a34a; }
+      .bad { background: #dc262622; color: #dc2626; border: 1px solid #dc2626; }
+      .pending { background: #ca8a0422; color: #ca8a04; border: 1px solid #ca8a04; }
+      #log { margin-top: 1rem; padding: 0.75rem; border: 1px solid #8884; border-radius: 8px; max-height: 20rem; overflow: auto; font-size: 0.8rem; white-space: pre-wrap; }
+      button { font: inherit; padding: 0.25rem 0.75rem; margin-right: 0.5rem; }
+      dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.25rem 1rem; }
+      dt { opacity: 0.6; }
+    </style>
+  </head>
+  <body>
+    <h1>Switchboard — MCP bridge transport spike (wayfinder #9)</h1>
+    <dl>
+      <dt>handshake</dt>
+      <dd><span id="conn" class="badge pending">connecting…</span></dd>
+      <dt>tab id</dt>
+      <dd id="tabid">—</dd>
+      <dt>counter context</dt>
+      <dd id="counter">0</dd>
+    </dl>
+    <p>
+      <button id="inc">increment demo.counter</button>
+      <button id="emit">emit demo.ping event</button>
+    </p>
+    <p style="opacity: 0.6; font-size: 0.85rem">
+      Tip: open with <code>?v=999</code> to send a wrong BRIDGE_PROTOCOL_VERSION and observe the structured rejection.
+    </p>
+    <div id="log"></div>
+    <script type="module" src="/src/page/kernel-stub.ts"></script>
+  </body>
+</html>

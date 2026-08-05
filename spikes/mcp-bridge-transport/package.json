@@ -1,0 +1,24 @@
+{
+  "name": "@switchboard/spike-mcp-bridge-transport",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Wayfinder #9 — validation spike for the locked bridge protocol (#11): MCP over Streamable HTTP on a Vite dev server, Switchboard wire protocol into a live page registry stub.",
+  "scripts": {
+    "dev": "vite",
+    "validate:no-page": "tsx scripts/validate.mts no-page",
+    "validate:origin": "tsx scripts/validate.mts origin",
+    "validate:with-page": "tsx scripts/validate.mts with-page",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.30.0",
+    "ajv": "8.20.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.2",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vite": "8.2.0"
+  }
+}
