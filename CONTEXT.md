@@ -22,6 +22,8 @@ Defined by their bridge semantics: Command, Event, and Context can cross to agen
 - **Context** — a named, observable *value*: the latest state, replayed immediately to every new observer. The home of "what is true right now."
   - The boundary rule: *need the latest value later → Context; only announcing a moment → Event.*
 - **Service** — a named, live in-page object shared between plugins. Never serialized, never bridged; the only primitive that stays entirely inside the page.
+- **Wire-legal** — the serializability contract for the three bridgeable primitives: a value is legal iff it survives a strict JSON round-trip unchanged (no dates, binaries, maps, cycles). Binds Command inputs/results, Event payloads, and Context values *unconditionally* — bridge grants never change the contract. Enforced where serialization already happens (the bridge), never policed by the kernel.
+  - The boundary rule: *live object → Service; data → everything else, and data means strict JSON.*
 
 ## Capabilities
 
@@ -62,3 +64,14 @@ Kernel infrastructure (alongside Disposable), not a fifth primitive: nothing is 
 - **Badge** — a property of a command item (count or dot), fed by a Context key the plugin names. Not a contribution kind.
 - **Strip** — the toolbar's single contributable region in v1; implicit (no `slot` field exists yet — `slot` and `group` are reserved future placement fields).
 - **Cluster** — the unit of strip ordering: each plugin's items render adjacently, clusters follow plugin activation order (application-developer owned), and an item's `order` number positions it only within its own plugin's cluster. Cross-plugin interleaving is deliberately unsayable.
+
+## Element identity (`dom.inspector`)
+
+Domain vocabulary owned by the `dom.inspector` capability, not the kernel — the capability contract (and its semver) defines the shape, minting, resolution, and hydration of element identity, the same way `toolbar` owns placement.
+
+- **ElementReference** — a registry-minted opaque handle to a live DOM node *instance* (not a logical position: a framework remount mints a new identity). Carries only a closed display envelope — kind brand, id, tag, mint-time label — everything else is hydration. Valid only within the minting page session; ids never repeat across sessions.
+- **Element registry** — the inspector's id→node map behind every reference. Never pins: minting a reference must not keep DOM alive, and garbage collection is the only collector (no release API).
+- **Stale reference** — the single resolution failure: the node was collected, or the id is unknown here. Never subdivided further — the registry cannot reliably tell the cases apart. Detachment is *not* death: an out-of-document but alive node still resolves, reported as disconnected.
+- **Hydration** — fetching element detail on demand instead of shipping it eagerly. In-page, hydration is the live node itself (resolve on the service); over the bridge, it is one inspector-owned describe command whose **facets** (attributes, geometry, a11y, description, …) name exactly what the caller wants. The facet menu versions with the capability semver.
+- **Element description** — the durable, serializable anchor for an element that must be findable after a reload (selector and text hints, obtained as a hydration facet). Deliberately *not* an ElementReference: descriptions are fuzzy and best-effort, resolved by whoever stored them.
+  - The boundary rule: *handle for the living page → ElementReference; anchor that must survive reload → element description.*
