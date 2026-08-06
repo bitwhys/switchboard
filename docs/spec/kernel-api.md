@@ -58,7 +58,7 @@ Plugin ids SHOULD be two segments, `publisher.name` (e.g. `acme.perf-panel`). Th
 
 ### 2.4 Prefixes and the reserved namespace
 
-A plugin's registrations live under its chosen namespace **by convention**; the kernel MUST NOT enforce prefix ownership — with one exception: **`switchboard.*` is reserved for the kernel itself.** Any plugin registration under `switchboard.*` MUST be rejected with a loud error. First-party reference plugins are not exempt (they use `metrics.*`, `inspector.*`, `a11y.*`, `feedback.*`).
+A plugin's registrations live under its chosen namespace **by convention**; the kernel MUST NOT enforce prefix ownership — with one exception: **`switchboard.*` is reserved for the kernel itself.** Any plugin registration under `switchboard.*` MUST be rejected with a loud error. First-party reference plugins are not exempt (they use `metrics.*`, `dom.*`, `a11y.*`, `feedback.*`).
 
 ### 2.5 The colon grammar (permissions and activation hints)
 
