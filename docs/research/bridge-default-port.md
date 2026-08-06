@@ -191,8 +191,6 @@ Two traps for dev tooling sit in that list: **6000** (X11 — note Storybook's 6
 
 ### 4.3 The hazard nobody budgets for: search windows, not defaults
 
-### 4.2 The hazard nobody budgets for: search windows, not defaults
-
 Comparing a candidate against a list of *default* ports is not enough, because several widely-installed tools **sweep upward** when their default is busy. A port that is clean against every default can still be claimed by the third instance of some other tool.
 
 - **Gradio** — default 7860, and on collision it sweeps a fixed window. From source: `INITIAL_PORT_VALUE = int(os.getenv("GRADIO_SERVER_PORT", "7860"))`, `TRY_NUM_PORTS = int(os.getenv("GRADIO_NUM_PORTS", "100"))`, and the candidate list is `range(INITIAL_PORT_VALUE, INITIAL_PORT_VALUE + TRY_NUM_PORTS)` — i.e. **7860-7959** [src]. The docs state the behaviour without the bound: "If None, will search for an available port starting at 7860" [docs]. **This is what disqualified 7923**, which was otherwise the strongest candidate: IANA-unassigned in an 18-port block, with a tidy mnemonic. Gradio is common on exactly the ML/agent-adjacent machines Switchboard targets, so this is not a hypothetical.
@@ -231,12 +229,16 @@ Inside `7649-7662` itself: nothing assigned, nothing reserved, no Known Unauthor
 
 **Strategy A — publish a fixed port, document it, let the user override.** Sentry Spotlight's sidecar defaults to **8969**, overridable via `spotlight -p <port>` or by pointing the SDK at a custom URL. Its docs state neither a rationale for the number nor what happens when it is busy [docs]. This is the strategy Switchboard is choosing, and Spotlight is the closest architectural analogue overall — page dials a loopback sidecar, origin-allowlisted (per [adapter-next-hosting.md](./adapter-next-hosting.md) §2.4).
 
-**Strategy B — never publish a port; make the client find it.** Two variants, both first-party:
+**Strategy B — never publish a port; make the client find it.** Four variants, all first-party, all verified in source:
 
-- **Vercel Toolbar's Next plugin** spawns its sidecar on a *free* port and injects a rewrite so the browser only ever sees a same-origin path — the port is an implementation detail nobody types [src, per [adapter-next-hosting.md](./adapter-next-hosting.md) §2.4].
-- **`next-devtools-mcp`** puts a stdio shim in `.mcp.json` and discovers dev servers at runtime (§6.2) [docs].
+- **Stable path, dynamic port, proxy between.** **Vercel Toolbar** picks a free port via `get-port` over the range **25000-26000** (fallback `43214`), then injects a Next rewrite `/.well-known/vercel-toolbar/:path*` → `http://127.0.0.1:<port>/:path*`. The browser only ever addresses the app's own origin [src].
+- **Stdio shim + runtime discovery.** **`next-devtools-mcp`** — no port or URL in `.mcp.json` at all (§6.2) [docs].
+- **Port encoded in a lockfile *filename*.** **Claude Code's own built-in `ide` MCP server** takes a random port in 10000-65535 — explicitly not configurable — and writes `~/.claude/ide/<port>.lock` (mode `0600` in a `0700` directory) carrying pid, workspace, transport and auth token; the client globs the directory [docs]. Firebase's Emulator Hub is the same idea with a locator file instead: `${os.tmpdir()}/hub-${projectId}.json` holding `{version, origins, pid}`, with a `process.kill(pid, 0)` staleness check [src].
+- **No TCP port at all.** **chrome-devtools-mcp** uses a Unix domain socket / Windows named pipe at a deterministic path (`$XDG_RUNTIME_DIR/chrome-devtools-mcp/server.sock`, `mode 0o700`) plus a `daemon.pid` liveness file [src].
 
-The lesson is not "pick a number like theirs" but **the number only matters if you chose Strategy A** — and Strategy A is worth choosing only when the ergonomic cost of the alternative (a second published artifact, a discovery mechanism with its own failure modes) exceeds the cost of a documented collision. For v1 it does (§6.2).
+The lesson is not "pick a number like theirs" but **the number only matters if you chose Strategy A** — and Strategy A is worth choosing only when the ergonomic cost of the alternatives exceeds the cost of a documented collision. §6.5 argues that for v1 it does, and takes the counter-case seriously.
+
+**A useful negative result:** neither Vite nor Next.js writes a port file at all. Next stores its chosen port only in `process.env.PORT` in-process, and modern Expo *dropped* the legacy `packager-info.json` that used to carry `packagerPort` [src]. This is why Vercel's own `next-devtools-mcp` falls back to **process enumeration** (`findProcess("name", "next-server")`, then PID→port via `netstat`/`ss`) and, when that fails, instructs the agent to *"Ask the user which port your Next.js dev server is running on"*; and why the JetBrains MCP proxy **scans 63342-63352 and probes each with `tools/list` every 10s** [src]. Discovery is not free.
 
 **MCP-specific observations:**
 
@@ -325,15 +327,30 @@ One convenient asymmetry with Next.js: `PORT` "cannot be set in `.env` as bootin
 
 So:
 
-1. **Bounded retry** — a few attempts over a short window (order of 1s total), for the re-fork race only. Not a scan: every attempt is for the *same* port.
-2. **Then fail loud**, refusing to start, with a message that names all three remedies:
+1. **Identity-probe before despairing.** On `EADDRINUSE`, `GET /health` on the port and check for a Switchboard identity marker before treating the holder as a stranger. This is lifted directly from Spotlight, which is the best-engineered handling found in the survey: it probes the port and compares `X-Powered-By === "spotlight-by-sentry"`, and on a match logs "Spotlight is already running on port N" and **reuses the existing server rather than starting a second one** [src]. It cleanly separates the three cases the error message would otherwise ask a human to disambiguate.
+2. **Bounded retry** — a few attempts over a short window (order of 1s total), for the re-fork race only. Not a scan: every attempt is for the *same* port. Spotlight independently converged on this shape too (same port, 5s interval, `MAX_RETRIES = 3`, then an actionable `PortInUseError`) [src].
+3. **Then fail loud**, refusing to start, with a message that names all three remedies:
    - another Switchboard project is already using this port → set `SWITCHBOARD_PORT` for one of them;
    - some other process holds it → name the port and how to find the holder;
    - and the two documented fallbacks, `7655` and `7656`.
-3. **Never** silently bind a different port.
-4. The failure must not take down `next dev` itself where that can be avoided — the bridge is a devtool, and an app developer who does not care about Switchboard right now should still be able to work. Refusing to *start the bridge* with a loud error, rather than throwing out of `register()` and killing the dev server, is the right severity. This is a genuine judgement call and is flagged as such in §9.
+4. **Never** silently bind a different port.
+5. The failure must not take down `next dev` itself where that can be avoided — the bridge is a devtool, and an app developer who does not care about Switchboard right now should still be able to work. Refusing to *start the bridge* with a loud error, rather than throwing out of `register()` and killing the dev server, is the right severity. This is a genuine judgement call and is flagged as such in §9.
 
-Point 4 is the honest resolution of the ticket's framing ("a failing adapter blocks `next dev`"): fail loud about the *bridge*, not about the *app*.
+Point 5 is the honest resolution of the ticket's framing ("a failing adapter blocks `next dev`"): fail loud about the *bridge*, not about the *app*.
+
+Note that step 1 is **not** the same as reuse for Switchboard. Spotlight can reuse a live sidecar because its sidecar is a stateless relay shared by any number of projects. Switchboard's bridge is bound to *one page kernel and one registry*, so a second project attaching to the first project's bridge would silently give its agents the wrong page — the exact failure fail-loud exists to prevent. **Probe to diagnose, not to reuse.**
+
+### 6.5 The strongest objection: a fixed default is the *least* popular answer
+
+Stated plainly, because the prior-art survey lands on it and the note should not bury it: **of the strategies the ecosystem actually converged on, "fixed default port, documented, with fallbacks" is the one that leaves clients unable to find you.** The three alternatives each solve discovery outright — ride the host app's port on a distinguished path (webpack, Storybook, `/_next/mcp`, Vercel Toolbar's proxy); use a Unix socket at a deterministic path (Google's 2026 choice for chrome-devtools-mcp); or take a dynamic port and publish it in a lockfile keyed by pid (Anthropic's choice for Claude Code's `ide` server). That Vercel ends up enumerating processes and JetBrains ends up polling eleven ports every ten seconds is evidence that fixed-port thinking has a real cost.
+
+The objection is correct on its own terms and still does not carry, for one reason that is specific to Switchboard and easy to miss: **every one of those three alternatives serves a consumer that is a program. Switchboard's second consumer is a web page.**
+
+- **Unix sockets and named pipes are not dialable from a browser.** This kills option 2 outright for the page leg, no matter how well it serves the agent leg.
+- **Lockfile discovery requires a client that globs a directory.** Claude Code's `ide` server works because Claude Code is *both ends* — a closed ecosystem where the convention is known to the only client that matters. Switchboard's agent leg must serve arbitrary third-party MCP clients that read a URL out of a JSON file and nothing more, and its page leg is a browser bundle that cannot read `~/.claude/ide/` at all.
+- **Riding the app's port is the one genuinely attractive option, and the adapter research already ruled it out for Next** — route handlers cannot accept WebSocket upgrades, so the page leg has nowhere to land ([adapter-next-hosting.md](./adapter-next-hosting.md) §1.3, §2.2). The rewrite-façade variant is retained there as a tunneled-dev escape hatch, and it remains the most promising path to retiring the fixed port later (§9).
+
+So the honest framing is not "fixed port is best" but **"fixed port is what is left once the page leg is taken seriously, and it is adequate because the failure it produces is loud and one-line-fixable."** The moment `NextResponse.upgrade()` ships (RFC #95514, watch item in the adapter research), option 1 becomes available for both legs and this decision should be reopened.
 
 ## 7. Recommendation
 
@@ -358,7 +375,8 @@ Amending [adapter-next-hosting.md](./adapter-next-hosting.md) §6.7 ("Port polic
 
 1. **`DEFAULT_BRIDGE_PORT = 7654`**, exported as a named constant from the shared bridge package so the adapter, the page client's default URL, and the docs all read the same source. Documented fallbacks 7655 / 7656.
 2. **`SWITCHBOARD_PORT` is the single override**, read by `register()` on the server side and mirrored to the page bundle (`NEXT_PUBLIC_SWITCHBOARD_PORT`) for the client. The adapter docs ship the `.mcp.json` snippet from §6.3 with `${SWITCHBOARD_PORT:-7654}` so that one variable moves both ends.
-3. **`EADDRINUSE` policy is normative-ish adapter behaviour**, not an implementation detail: bounded same-port retry for the re-fork race, then refuse to start the bridge with an actionable error naming the port, the likely causes, and the fallbacks. No scanning. This deserves a line in the adapter contract because a future adapter that scans would silently break every agent config in the ecosystem.
+3. **`EADDRINUSE` policy is normative-ish adapter behaviour**, not an implementation detail: identity-probe the holder, bounded same-port retry for the re-fork race, then refuse to start the bridge with an actionable error naming the port, the likely causes, and the fallbacks. No scanning. This deserves a line in the adapter contract because a future adapter that scans would silently break every agent config in the ecosystem.
+   - The identity probe implies a **health endpoint with a Switchboard marker** on the bridge port (Spotlight uses an `X-Powered-By` header on `GET /health`; §6.4). Cheap, and it upgrades the error message from "port busy" to "another Switchboard project is on this port". Probe to diagnose, never to reuse — the bridge is bound to one page kernel.
 4. **Both loopback literals** (spec §15.1) — a port is only "free" if it is free on `127.0.0.1` *and* `::1`. The availability check and the error message must both be literal-aware, or a half-bound port will read as success.
 5. **Selection rule for any future adapter that needs its own port:** unassigned in the current IANA registry (range-aware check), inside 1024-32767, and at least ~100 ports clear above any popular tool's default (§4.3), and absent from the Fetch/Chromium blocked-port list (§4.2).
 
@@ -368,5 +386,6 @@ Amending [adapter-next-hosting.md](./adapter-next-hosting.md) §6.7 ("Port polic
 2. **Can `SWITCHBOARD_PORT` actually live in `.env`?** Reasoned in §6.3 from Next's documented explanation of why `PORT` cannot [docs], but not exercised. Confirm during adapter implementation — the docs' recommended snippet depends on the answer.
 3. **Does the port need to be per-project rather than per-machine?** Next 16's dev lockfile makes one `next dev` per project safe, but says nothing about two projects. The current answer is "set `SWITCHBOARD_PORT` on the second one, and the error tells you to" — acceptable for v1, but a project-scoped derivation (hash the project path into the `7649-7662` block) is a cheap future option worth recording before it is needed.
 4. **Should Switchboard ship a stdio discovery shim (§6.2), and when?** It is the only mechanism that makes a scanning bridge safe, it is first-party-validated by `next-devtools-mcp`, and it is the same artifact already earmarked for stdio-only client support. The blocker is that it does nothing for the page leg. Worth its own ticket once the adapter exists — and if it ever ships, the fail-loud ruling here should be revisited, not inherited.
-5. **Tunneled/remote dev** (open question 3 of the adapter research) is untouched by this decision: forwarding 7654 is the same problem as forwarding any fixed port, and the rewrite façade remains the escape hatch.
-6. **Re-audit the registry before the contract freezes.** The `7649-7662` block is unassigned as of the 2026-08-05 registry snapshot; IANA assignments are additive and this took ~one line to check [reg].
+5. **The explicit trigger to reopen this whole decision** (§6.5): if `NextResponse.upgrade()` ships (RFC #95514), the page leg can move same-origin, both doors can ride the app's port on a distinguished path, and the fixed bridge port stops being necessary at all. That is the ecosystem-majority strategy and Switchboard is only outside it because Next currently cannot carry a WebSocket on a route handler. Re-evaluate on the RFC's first shipped release, alongside the adapter research's own open question 2.
+6. **Tunneled/remote dev** (open question 3 of the adapter research) is untouched by this decision: forwarding 7654 is the same problem as forwarding any fixed port, and the rewrite façade remains the escape hatch.
+7. **Re-audit the registry before the contract freezes.** The `7649-7662` block is unassigned as of the 2026-08-05 registry snapshot; IANA assignments are additive and this took ~one line to check [reg].
