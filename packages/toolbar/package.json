@@ -1,0 +1,36 @@
+{
+	"name": "@switchboard-dev/toolbar",
+	"version": "0.0.0",
+	"description": "Reference provider of the toolbar@1.0.0 capability: items, badges, panels, mount contract.",
+	"type": "module",
+	"engines": {
+		"node": ">=20.19"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"sideEffects": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@switchboard-dev/core": "workspace:^",
+		"@switchboard-dev/ui": "workspace:^"
+	},
+	"devDependencies": {
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"vitest": "catalog:"
+	}
+}
