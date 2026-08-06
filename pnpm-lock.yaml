@@ -12,6 +12,9 @@ catalogs:
     typescript:
       specifier: ^7.0.2
       version: 7.0.2
+    unrun:
+      specifier: ^0.3.1
+      version: 0.3.1
     vitest:
       specifier: ^4.1.10
       version: 4.1.10
@@ -86,10 +89,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -108,10 +114,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -124,10 +133,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -136,10 +148,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -155,10 +170,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -171,10 +189,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -187,10 +208,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -203,10 +227,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -219,10 +246,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -235,10 +265,13 @@ importers:
     devDependencies:
       tsdown:
         specifier: 'catalog:'
-        version: 0.22.14(typescript@7.0.2)
+        version: 0.22.14(typescript@7.0.2)(unrun@0.3.1)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
+      unrun:
+        specifier: 'catalog:'
+        version: 0.3.1
       vitest:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.2)(vite@8.2.0(@types/node@26.1.2))
@@ -1381,6 +1414,16 @@ packages:
     resolution: {integrity: sha512-rBJeI5CXAlmy1pV+617WB9J63U6XcazHHF2f2dbJix4XzpUF0RS3Zbj0FGIOCAva5P/d/GBOYaACQ1w+0azUkg==}
     engines: {node: '>= 4.0.0'}
 
+  unrun@0.3.1:
+    resolution: {integrity: sha512-onIck/oNnCaytwths1ZVp1LK2Gq2hPoyFhiHebObuUXqR3S0uHuLLaBK8K6mRRgV7Ptip8AnNvaUsgzwWwBZuA==}
+    engines: {node: ^22.13.0 || >=24.0.0}
+    hasBin: true
+    peerDependencies:
+      synckit: ^0.11.11
+    peerDependenciesMeta:
+      synckit:
+        optional: true
+
   verkit@0.3.2:
     resolution: {integrity: sha512-zj/ob3UsvJGN0whEAKFp53REA5X66hvffVqoCtVQAakJKnKlH+/PcOfMoFwIG/o4rElqLv/ycAFlx8ZlXUorCg==}
     engines: {node: '>=18.12.0'}
@@ -2365,7 +2408,7 @@ snapshots:
 
   tree-kill@1.2.2: {}
 
-  tsdown@0.22.14(typescript@7.0.2):
+  tsdown@0.22.14(typescript@7.0.2)(unrun@0.3.1):
     dependencies:
       ansis: 4.3.1
       cac: 7.0.0
@@ -2384,6 +2427,7 @@ snapshots:
       verkit: 0.3.2
     optionalDependencies:
       typescript: 7.0.2
+      unrun: 0.3.1
     transitivePeerDependencies:
       - '@typescript/native-preview'
       - '@volar/typescript'
@@ -2430,6 +2474,10 @@ snapshots:
   undici-types@8.3.0: {}
 
   universalify@0.1.2: {}
+
+  unrun@0.3.1:
+    dependencies:
+      rolldown: 1.2.2
 
   verkit@0.3.2: {}
 

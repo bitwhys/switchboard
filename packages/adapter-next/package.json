@@ -25,13 +25,14 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@switchboard-dev/core": "workspace:^",
 		"@switchboard-dev/bridge-mcp": "workspace:^",
+		"@switchboard-dev/core": "workspace:^",
 		"@switchboard-dev/toolbar": "workspace:^"
 	},
 	"devDependencies": {
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
+		"unrun": "catalog:",
 		"vitest": "catalog:"
 	}
 }
