@@ -98,6 +98,7 @@ interface PanelItem {
   label?: string        // overrides the panel's title in the strip
   icon?: string
   order?: number
+  badge?: BadgeBinding  // §4.3
 }
 
 interface BadgeBinding {
@@ -125,7 +126,7 @@ Consequence: anything command-bound in the strip is **agent-invocable by constru
 
 ### 4.3 Badges
 
-A badge is a **property of a command item** — never a contribution kind. It is fed by a Context key the plugin names in `badge.context`; the adapter observes that key ([§8](./kernel-api.md#8-context) — replay-on-observe makes the initial render synchronous) and re-renders on every write.
+A badge is a **property of a strip item** (command item or panel item) — never a contribution kind. It is fed by a Context key the plugin names in `badge.context`; the adapter observes that key ([§8](./kernel-api.md#8-context) — replay-on-observe makes the initial render synchronous) and re-renders on every write.
 
 The current value selects the rendering:
 
@@ -262,7 +263,7 @@ The adapter MUST also own a visually-hidden **light-DOM fallback live region** a
 
 ### 8.7 P7 — strip semantics
 
-The strip is `role="toolbar"` with a **roving tabindex** (exactly one tab stop) and Arrow-key navigation between items. Separators between plugin clusters (§6.1) are `role="separator"`. A command item's badge (§4.3) MUST fold into the item's accessible name (e.g. "Refresh metrics, 3 new"). Panel items MUST convey their popup and expanded state (e.g. `aria-haspopup="dialog"`, `aria-expanded`).
+The strip is `role="toolbar"` with a **roving tabindex** (exactly one tab stop) and Arrow-key navigation between items. Separators between plugin clusters (§6.1) are `role="separator"`. An item's badge (§4.3) MUST fold into the item's accessible name (e.g. "Refresh metrics, 3 new"). Panel items MUST convey their popup and expanded state (e.g. `aria-haspopup="dialog"`, `aria-expanded`).
 
 ### 8.8 P8 — the labelled landmark
 
