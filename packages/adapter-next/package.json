@@ -1,0 +1,38 @@
+{
+	"name": "@switchboard-dev/adapter-next",
+	"version": "0.0.0",
+	"description": "Next.js adapter: mounts Switchboard and the bridge MCP edge in a Next.js app.",
+	"type": "module",
+	"engines": {
+		"node": ">=20.19"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"sideEffects": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@switchboard-dev/bridge-mcp": "workspace:^",
+		"@switchboard-dev/core": "workspace:^",
+		"@switchboard-dev/toolbar": "workspace:^"
+	},
+	"devDependencies": {
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"unrun": "catalog:",
+		"vitest": "catalog:"
+	}
+}

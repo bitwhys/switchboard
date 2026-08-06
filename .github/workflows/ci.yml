@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [20, 24]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # pnpm 11 itself needs Node >=22.13; the standalone binary bundles its
+          # own Node so package scripts can still run on the matrix Node.
+          standalone: true
+
+      # Build tooling (tsdown: engines ^22.18 || >=24.11) outruns the packages'
+      # own engines floor (>=20.19), so install + build happen on Node 24 and
+      # the matrix Node below validates what engines actually promises
+      # consumers: typecheck and tests running on that version.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-node${{ matrix.node-version }}-${{ github.sha }}
+          restore-keys: turbo-${{ runner.os }}-node${{ matrix.node-version }}-
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm turbo run build
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      # ^build dependencies replay from the turbo cache primed above, so
+      # tsdown never executes on the matrix Node.
+      - run: pnpm turbo run typecheck lint test

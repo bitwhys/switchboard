@@ -1,0 +1,36 @@
+{
+	"name": "@switchboard-dev/plugin-scanner",
+	"version": "0.0.0",
+	"description": "Reference plugin: on-demand axe-core accessibility scans.",
+	"type": "module",
+	"engines": {
+		"node": ">=20.19"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"sideEffects": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@switchboard-dev/core": "workspace:^"
+	},
+	"devDependencies": {
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"unrun": "catalog:",
+		"vitest": "catalog:"
+	}
+}

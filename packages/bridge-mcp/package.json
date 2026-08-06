@@ -1,0 +1,44 @@
+{
+	"name": "@switchboard-dev/bridge-mcp",
+	"version": "0.0.0",
+	"description": "The page ⇄ agent bridge: Switchboard wire protocol and the MCP edge (Streamable HTTP).",
+	"type": "module",
+	"engines": {
+		"node": ">=20.19"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		},
+		"./node": {
+			"types": "./dist/node.d.ts",
+			"default": "./dist/node.js"
+		},
+		"./web": {
+			"types": "./dist/web.d.ts",
+			"default": "./dist/web.js"
+		}
+	},
+	"sideEffects": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@switchboard-dev/core": "workspace:^"
+	},
+	"devDependencies": {
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"unrun": "catalog:",
+		"vitest": "catalog:"
+	}
+}

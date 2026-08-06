@@ -1,0 +1,14 @@
+{
+	"name": "example-next",
+	"private": true,
+	"version": "0.0.0",
+	"description": "Example Next.js app wired with the four reference plugins.",
+	"type": "module",
+	"dependencies": {
+		"@switchboard-dev/adapter-next": "workspace:^",
+		"@switchboard-dev/plugin-inspector": "workspace:^",
+		"@switchboard-dev/plugin-feedback": "workspace:^",
+		"@switchboard-dev/plugin-metrics": "workspace:^",
+		"@switchboard-dev/plugin-scanner": "workspace:^"
+	}
+}

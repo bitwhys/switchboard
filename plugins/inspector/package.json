@@ -1,0 +1,36 @@
+{
+	"name": "@switchboard-dev/plugin-inspector",
+	"version": "0.0.0",
+	"description": "Reference plugin: v1 provider of the dom.inspector@1.0.0 capability (ElementReference, registry, picker).",
+	"type": "module",
+	"engines": {
+		"node": ">=20.19"
+	},
+	"files": [
+		"dist"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
+	},
+	"sideEffects": false,
+	"publishConfig": {
+		"access": "public"
+	},
+	"scripts": {
+		"build": "tsdown",
+		"typecheck": "tsc --noEmit",
+		"test": "vitest run"
+	},
+	"dependencies": {
+		"@switchboard-dev/core": "workspace:^"
+	},
+	"devDependencies": {
+		"tsdown": "catalog:",
+		"typescript": "catalog:",
+		"unrun": "catalog:",
+		"vitest": "catalog:"
+	}
+}
