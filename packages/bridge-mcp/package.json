@@ -33,9 +33,12 @@
 		"test": "vitest run"
 	},
 	"dependencies": {
-		"@switchboard-dev/core": "workspace:^"
+		"@modelcontextprotocol/sdk": "^1.30.0",
+		"@switchboard-dev/core": "workspace:^",
+		"ajv": "^8.20.0"
 	},
 	"devDependencies": {
+		"@types/node": "^24.13.3",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"unrun": "catalog:",
