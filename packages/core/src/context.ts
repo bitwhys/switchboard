@@ -23,6 +23,10 @@ export interface ContextStore {
 	get(owner: string, key: string): unknown | undefined;
 	delete(owner: string, key: string): void;
 	observe(owner: string, key: string, cb: EventCallback): Disposable;
+	/** §11.1 — unguarded read for `when` views: any string, latest value or undefined. */
+	peek(key: string): unknown | undefined;
+	/** §11.1 — change feed (set and delete only, never replay), for tracked re-evaluation. */
+	onChange(cb: (key: string) => void): Disposable;
 }
 
 interface Entry {
@@ -35,6 +39,7 @@ interface Entry {
 export function createContextStore(hub: DiagnosticsHub): ContextStore {
 	const entries = new Map<string, Entry>();
 	const observers = new Map<string, Set<EventCallback>>();
+	const changeListeners = new Set<(key: string) => void>();
 
 	function notify(key: string, value: unknown, meta: EmitMeta): void {
 		for (const cb of observers.get(key) ?? []) {
@@ -42,6 +47,13 @@ export function createContextStore(hub: DiagnosticsHub): ContextStore {
 				cb(value, meta);
 			} catch {
 				// a throwing observer must not break the writer or its peers
+			}
+		}
+		for (const cb of changeListeners) {
+			try {
+				cb(key);
+			} catch {
+				// same containment
 			}
 		}
 	}
@@ -89,6 +101,14 @@ export function createContextStore(hub: DiagnosticsHub): ContextStore {
 				// same containment as live notification
 			}
 			return { dispose: () => set.delete(cb) };
+		},
+		peek(key) {
+			const entry = entries.get(key);
+			return entry?.present ? entry.value : undefined;
+		},
+		onChange(cb) {
+			changeListeners.add(cb);
+			return { dispose: () => changeListeners.delete(cb) };
 		},
 	};
 }

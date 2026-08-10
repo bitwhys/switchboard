@@ -337,7 +337,7 @@ interface ContextView {
 
 `ctx.get(key)` returns the latest value for `key` synchronously (`undefined` if unset). The kernel records which keys each evaluation **actually reads** and re-evaluates the predicate only when one of those keys changes, re-tracking on every run. Dependencies cannot drift from the code because they *are* the code — there is no declared dependency list, and there is no full-snapshot form.
 
-Predicates MUST be pure and cheap: no side effects, no async, no reads outside the view.
+Predicates MUST be pure and cheap: no side effects, no async, no reads outside the view. A throwing predicate violates this rule; the kernel MUST contain the throw — the evaluation counts as `false` (the command is not listed) and a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) (`when-failed`) reports it. Since `when` never gates dispatch (§11.2), evaluation has no call site to throw at, so the warning is the loud path.
 
 ### 11.2 Gates listing, never dispatch
 
@@ -559,7 +559,7 @@ Announcing is unconditional — it is not dev-gated; the handoff is load-bearing
 
 ### 17.2 First live kernel wins
 
-One page has one kernel. Announcing a second kernel while a first is still live (announced and not retracted) MUST emit a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) on the second instance's diagnostics channel. Single-kernel consumers MUST attach to the **first** kernel they receive and ignore later pushes while it remains live: first wins.
+One page has one kernel. Announcing a second kernel while a first is still live (announced and not retracted) MUST emit a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) (`duplicate-kernel`) on the second instance's diagnostics channel. Single-kernel consumers MUST attach to the **first** kernel they receive and ignore later pushes while it remains live: first wins.
 
 ### 17.3 Retraction
 

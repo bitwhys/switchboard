@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Diagnostic } from "../src/diagnostics";
-import { createKernel, type KernelOptions } from "../src/kernel";
+import { createKernel, type SwitchboardOptions } from "../src/kernel";
 import type { PluginDefinition } from "../src/plugin";
 
 // Kernel spec §10 — Capabilities: checked, not solved. Single provider
@@ -11,7 +11,7 @@ const base = { name: "Test Plugin", version: "1.0.0" };
 
 async function harness(
 	plugins: PluginDefinition[],
-	options?: Partial<KernelOptions>,
+	options?: Partial<SwitchboardOptions>,
 ) {
 	const kernel = createKernel({
 		plugins,

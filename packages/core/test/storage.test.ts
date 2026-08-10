@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Diagnostic } from "../src/diagnostics";
 import { SwitchboardError } from "../src/errors";
-import { createKernel, type KernelOptions } from "../src/kernel";
+import { createKernel, type SwitchboardOptions } from "../src/kernel";
 import type { PluginApi, PluginDefinition } from "../src/plugin";
 import { localStorageEngine, memoryEngine } from "../src/storage";
 
@@ -14,7 +14,7 @@ const base = { name: "Test Plugin", version: "1.0.0" };
 
 async function harness(
 	plugins: PluginDefinition[],
-	options?: Partial<KernelOptions>,
+	options?: Partial<SwitchboardOptions>,
 ) {
 	const kernel = createKernel({
 		plugins,
@@ -31,7 +31,7 @@ async function harness(
 /** One activated plugin; returns its PluginApi. */
 async function apiOf(
 	manifest: Partial<PluginDefinition> & { id: string },
-	options?: Partial<KernelOptions>,
+	options?: Partial<SwitchboardOptions>,
 ) {
 	let api: PluginApi | undefined;
 	const { seen } = await harness(

@@ -104,6 +104,8 @@ A `code` is a single lowercase kebab segment (`[a-z0-9-]+`), compared exactly. T
 | `command-not-found` | error | `commands.execute` for an id no command is registered under | [kernel §6.1](./kernel-api.md#61-registration-and-dispatch) |
 | `command-failed` | error | a command handler threw; wrapped with the command id | [kernel §6.1](./kernel-api.md#61-registration-and-dispatch) |
 | `permission-denied` | error | a call gated by an enforced permission the plugin does not hold (v1: `storage:use`) | [kernel §13.5](./kernel-api.md#135-permission-storageuse) |
+| `when-failed` | warning | a `when` predicate threw during evaluation; contained, the command treated as not listed | [kernel §11.1](./kernel-api.md#111-the-tracked-read-context-view) |
+| `duplicate-kernel` | warning | a second kernel announced while a first is live; first live kernel wins | [kernel §17.2](./kernel-api.md#172-first-live-kernel-wins) |
 | `unknown-manifest-field` | warning | an unknown manifest field, tolerated | [kernel §3.3](./kernel-api.md#33-manifest-validation) |
 | `unknown-activation-hint` | warning | an unknown activation hint, behaviorally ignored | [kernel §4.1](./kernel-api.md#41-activation-hints) |
 | `unknown-permission` | warning | an unknown permission string, tolerated, granting nothing | [kernel §12.2](./kernel-api.md#122-the-v1-vocabulary--eight-strings) |

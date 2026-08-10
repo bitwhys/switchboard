@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import {
+	createSwitchboard,
 	definePlugin,
 	localStorageEngine,
 	memoryEngine,
@@ -10,6 +11,10 @@ import { createKernel } from "../src/kernel";
 it("exposes the §2–§4 slice surface: definePlugin and SwitchboardError", () => {
 	expect(typeof definePlugin).toBe("function");
 	expect(typeof SwitchboardError).toBe("function");
+});
+
+it("exposes the §18 construction surface: createSwitchboard", () => {
+	expect(typeof createSwitchboard).toBe("function");
 });
 
 it("exposes the §13.3 engines: localStorageEngine and memoryEngine (the engine interface is public API)", () => {
