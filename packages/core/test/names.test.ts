@@ -134,6 +134,14 @@ describe("kernel §10.1 capability declaration grammar (as validated by §3.3)",
 		expect(validateCapabilityRequires("markdown.renderer@>=2 <3").ok).toBe(
 			true,
 		);
+		expect(validateCapabilityRequires("toolbar@1.x || 2.x").ok).toBe(true);
+		expect(validateCapabilityRequires("toolbar@*").ok).toBe(true);
+	});
+
+	it("rejects requires entries whose range is not valid semver-range grammar", () => {
+		expect(validateCapabilityRequires("toolbar@not a range").ok).toBe(false);
+		expect(validateCapabilityRequires("toolbar@^^1").ok).toBe(false);
+		expect(validateCapabilityRequires("toolbar@one.two").ok).toBe(false);
 	});
 
 	it("rejects entries whose name part violates the name grammar", () => {

@@ -57,6 +57,18 @@ export function createServiceRegistry(
 					message: `service ${JSON.stringify(name)} is already registered (§9)`,
 				});
 			}
+			// §10.4: a registered service name no plugin's `provides` declares
+			// is manifest drift — a dev-mode warning, never an error.
+			if (providers.providerOf(name) === undefined) {
+				hub.emit({
+					severity: "warning",
+					code: "manifest-drift",
+					source: "kernel",
+					plugin: owner,
+					subject: name,
+					message: `service ${JSON.stringify(name)} appears in no plugin's provides — declare it so the §10 check can see it (§10.4)`,
+				});
+			}
 			services.set(name, service);
 			const waiters = pending.get(name);
 			pending.delete(name);

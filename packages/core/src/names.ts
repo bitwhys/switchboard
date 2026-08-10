@@ -2,6 +2,8 @@
 // (§2.1), plus the separate colon grammar for permissions and activation
 // hints (§2.5, §12.1) and the capability declaration grammar (§10.1).
 
+import validRange from "semver/ranges/valid.js";
+
 const SEGMENT = /^[a-z0-9-]+$/;
 
 /** §2.1: one or more dot-separated `[a-z0-9-]+` segments, ≤ 128 chars. */
@@ -45,7 +47,12 @@ export function isExactSemver(v: unknown): v is string {
 	return typeof v === "string" && SEMVER.test(v);
 }
 
-function splitCapability(
+/**
+ * §10.1: split a capability entry at the version separator. `version` is
+ * the raw right-hand side — an exact semver for `provides`, a range for
+ * `requires` — validated by the entry-kind validators below.
+ */
+export function splitCapability(
 	entry: unknown,
 ): { name: string; version?: string } | undefined {
 	if (typeof entry !== "string" || entry.length === 0) return undefined;
@@ -65,12 +72,15 @@ export function validateCapabilityProvides(entry: unknown): GrammarResult {
 }
 
 /**
- * §10.1: `requires` entries are `name` or `name@range`. Range *syntax* is
- * validated only as non-empty here; full range grammar checking lands with
- * the capability check itself (§10.3, a later core slice).
+ * §10.1: `requires` entries are `name` or `name@range` (semver range,
+ * node-semver grammar — the same `satisfies` vocabulary §10.3 checks with).
  */
 export function validateCapabilityRequires(entry: unknown): GrammarResult {
-	return { ok: splitCapability(entry) !== undefined };
+	const parts = splitCapability(entry);
+	if (!parts) return { ok: false };
+	return {
+		ok: parts.version === undefined || validRange(parts.version) !== null,
+	};
 }
 
 /**
