@@ -6,7 +6,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in
 
 TypeScript signatures and typed-JSON shape blocks in this document are **normative**. Prose qualifies them; it does not override them.
 
-This document is the one normative home for the **panel-chrome accessibility pattern set P1–P8** (§8), including the labelled-landmark obligation the spike promoted into the contract. Cross-cutting rules owned elsewhere are cited by link, never paraphrased: the naming grammar, the permission vocabulary, and the wire-legal rule live in [`kernel-api.md`](./kernel-api.md); bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md). Related document: [`dom-inspector-contract.md`](./dom-inspector-contract.md) (the other capability-owned contract).
+This document is the one normative home for the **panel-chrome accessibility pattern set P1–P8** (§8), including the labelled-landmark obligation the spike promoted into the contract. Cross-cutting rules owned elsewhere are cited by link, never paraphrased: the naming grammar, the permission vocabulary, and the wire-legal rule live in [`kernel-api.md`](./kernel-api.md); bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md); the words **loud** and **dev-mode warning** are defined in [`diagnostics.md`](./diagnostics.md). Related document: [`dom-inspector-contract.md`](./dom-inspector-contract.md) (the other capability-owned contract).
 
 *Consolidates (non-normative): the resolutions of tickets #7 (toolbar placement vocabulary) and #10 (Shadow DOM panel chrome a11y spike), the Shadow DOM accessibility research ([`docs/shadow-dom-a11y-patterns.md`](../shadow-dom-a11y-patterns.md)), and the spike evidence ([`prototypes/shadow-panel-a11y/`](../../prototypes/shadow-panel-a11y/)).*
 
@@ -44,13 +44,13 @@ The capability semver versions the placement vocabulary itself — the item and 
 - **Additive changes** — new optional fields (`slot`, `group`, `preferredSize`, a keep-alive hint, a plugin-facing close API; §10) — are **minor** version bumps.
 - **Breaking changes** are **major** version bumps, the same bump-on-breaking discipline as the bridge protocol.
 
-There is no third version number, and the npm package version of any adapter is **not** the contract version: chrome restyles and internal rewrites rev the package, not the capability. Compatibility is enforced at activation by the kernel's existing `satisfies` check with its loud diagnostic errors ([§10.3](./kernel-api.md#103-the-check)); this contract adds no enforcement machinery of its own.
+There is no third version number, and the npm package version of any adapter is **not** the contract version: chrome restyles and internal rewrites rev the package, not the capability. Compatibility is enforced at activation by the kernel's existing `satisfies` check with its [loud](./diagnostics.md#21-loud-errors) diagnostic errors ([§10.3](./kernel-api.md#103-the-check)); this contract adds no enforcement machinery of its own.
 
 ### 2.3 Consumption
 
 Two postures, mapping onto the kernel's two service-acquisition paths ([§9](./kernel-api.md#9-services)):
 
-- **Hard dependency** — the plugin cannot function without toolbar presence: declare `requires: ["toolbar@^1"]` and `await api.services.get('toolbar')`. Activation fails loudly when no toolbar is installed.
+- **Hard dependency** — the plugin cannot function without toolbar presence: declare `requires: ["toolbar@^1"]` and `await api.services.get('toolbar')`. Activation fails [loudly](./diagnostics.md#21-loud-errors) when no toolbar is installed.
 - **Soft dependency** — toolbar presence is preferred, not required: probe with `api.services.tryGet('toolbar')` and stay fully functional (headless-safe) when it returns `undefined`. No `requires` entry.
 
 A contributor SHOULD choose the soft posture unless toolbar presence is genuinely load-bearing.
@@ -70,9 +70,9 @@ interface ToolbarService {
 
 Both calls return a `Disposable` ([§4.3](./kernel-api.md#43-teardown-disposable)): disposing removes the contribution, and kernel-tracked disposal on plugin deactivation removes every contribution the plugin never explicitly cleaned up. A disposed panel that is currently open MUST be closed through the ordinary close path (§5.2) before its registration is removed.
 
-Malformed contributions — an item that is neither a command item nor a panel item, a panel with a missing `id`, `title`, or `mount`, an `id` violating the name grammar — MUST be rejected loudly at registration, rejecting **that contribution only**.
+Malformed contributions — an item that is neither a command item nor a panel item, a panel with a missing `id`, `title`, or `mount`, an `id` violating the name grammar — MUST be rejected [loudly](./diagnostics.md#21-loud-errors) at registration, rejecting **that contribution only**.
 
-Unknown fields on items and panels MUST be tolerated: preserved, surfaced as a dev-mode warning, never an error — the same forward-compatibility posture as the kernel ([§15](./kernel-api.md#15-versioning-and-forward-compatibility)). The reserved field names in §4.4 MUST NOT be assigned adapter-specific meanings.
+Unknown fields on items and panels MUST be tolerated: preserved, surfaced as a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), never an error — the same forward-compatibility posture as the kernel ([§15](./kernel-api.md#15-versioning-and-forward-compatibility)). The reserved field names in §4.4 MUST NOT be assigned adapter-specific meanings.
 
 ## 4. Items
 
@@ -106,7 +106,7 @@ interface BadgeBinding {
 }
 ```
 
-An item is `{ command }` **or** `{ panel }` — an object carrying both, or neither, MUST be rejected loudly. There is no third kind: menus, dropdowns, status-text zones, tabs-within-panels, and custom inline widgets are deliberately absent from v1 (§10).
+An item is `{ command }` **or** `{ panel }` — an object carrying both, or neither, MUST be rejected [loudly](./diagnostics.md#21-loud-errors). There is no third kind: menus, dropdowns, status-text zones, tabs-within-panels, and custom inline widgets are deliberately absent from v1 (§10).
 
 ### 4.1 Attribution
 
@@ -135,7 +135,7 @@ The current value selects the rendering:
 | `undefined`, `null`, `false`, or `0` | none |
 | `true` | dot |
 | a finite number > 0 | count (display formatting is adapter-defined, e.g. `99+`) |
-| anything else | none, with a dev-mode warning |
+| anything else | none, with a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) |
 
 The badge MUST fold into the item's accessible name (P7, §8.7). Context values are wire-legal by the kernel's unconditional rule ([§14](./kernel-api.md#14-the-wire-legal-rule)); the badge contract adds no constraint of its own.
 
@@ -161,7 +161,7 @@ interface PanelDefinition {
 }
 ```
 
-Panel ids follow the one kernel name grammar ([§2.1](./kernel-api.md#21-the-name-grammar)) and are **exclusive within the toolbar**: registering a taken panel id is a loud error. Panel ids are toolbar-local — they are not a kernel name kind ([§2.2](./kernel-api.md#22-name-kinds)) and never reach the bridge — but a plugin SHOULD keep them under its own namespace by the ordinary convention.
+Panel ids follow the one kernel name grammar ([§2.1](./kernel-api.md#21-the-name-grammar)) and are **exclusive within the toolbar**: registering a taken panel id is a [loud error](./diagnostics.md#21-loud-errors). Panel ids are toolbar-local — they are not a kernel name kind ([§2.2](./kernel-api.md#22-name-kinds)) and never reach the bridge — but a plugin SHOULD keep them under its own namespace by the ordinary convention.
 
 A panel item (§4) whose `panel` id has no current registration is not rendered; it appears when the panel registers. Panels are surfaces, not slotted content: a panel with no panel item is legal (it is simply unreachable from the strip in v1).
 
@@ -296,4 +296,4 @@ Recorded futures, all shaped to be **minor-version additive** under §2.2:
 - Further item kinds — menus/dropdowns, status text zones, custom inline widgets, tabs-within-panels — each admitted only when a concrete plugin demonstrably cannot be expressed with the two kinds plus badge. (All four v1 reference plugins are expressible without them.)
 - Running the remaining screen-reader matrix (NVDA, JAWS) against P5; flipping the default region placement, should the evidence demand it, is a behavioral change inside the adapter and not a contract change — the contract already requires both regions.
 
-The uniform posture matches the kernel ([§15](./kernel-api.md#15-versioning-and-forward-compatibility)): unknown fields tolerated with a dev-mode warning, reserved names never repurposed, malformed contributions rejected loudly — rejecting that contribution only.
+The uniform posture matches the kernel ([§15](./kernel-api.md#15-versioning-and-forward-compatibility)): unknown fields tolerated with a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), reserved names never repurposed, malformed contributions rejected [loudly](./diagnostics.md#21-loud-errors) — rejecting that contribution only.

@@ -57,7 +57,7 @@ The four reference plugins are chosen so that **every v1 kernel/bridge/storage f
 | Context sync replay, whole-value replace | metrics (per-vital keys), scanner, inspector |
 | Command-less, UI-less plugin via built-ins only | metrics |
 | Service provision + capability semver | inspector (`dom.inspector@1.0.0`) |
-| Hard `requires` + loud activation failure | scanner, feedback |
+| Hard `requires` + [loud](./diagnostics.md#21-loud-errors) activation failure | scanner, feedback |
 | `tryGet`, present path | inspector → `toolbar` |
 | `tryGet`, absent path | feedback → `feedback.sink` |
 | `when` predicates (tracked-read Context view) | command items inherit `when` ([toolbar contract §4.2](./toolbar-contract.md#42-command-items-are-presentation-only)); event-derived visibility strain examined in [stress-test scenario 3](../../prototypes/primitive-stress-test/README.md) |
