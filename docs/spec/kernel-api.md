@@ -8,7 +8,7 @@ TypeScript signatures and typed-JSON shape blocks in this document are **normati
 
 This document is the one normative home for three cross-cutting rules: the **naming grammar** (§2), the **permission vocabulary** (§12), and the **wire-legal rule** (§14). Every other document in the spec suite cites these sections by link and MUST NOT paraphrase them. The words **loud**, **named error**, and **dev-mode warning**, used throughout, are defined once in [`diagnostics.md`](./diagnostics.md). Related documents: [`bridge-protocol.md`](./bridge-protocol.md) (what the bridge does about these contracts), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
 
-*Consolidates (non-normative): the resolutions of tickets #5, #6, #8, #12, #16 and the schema-authoring research ([`docs/research/schema-authoring-for-commands.md`](../research/schema-authoring-for-commands.md)).*
+*Consolidates (non-normative): the resolutions of tickets #5, #6, #8, #12, #16, #38 and the schema-authoring research ([`docs/research/schema-authoring-for-commands.md`](../research/schema-authoring-for-commands.md)).*
 
 ---
 
@@ -150,6 +150,7 @@ interface PluginApi {
   events: EventsApi       // §7
   context: ContextApi     // §8
   services: ServicesApi   // §9
+  plugins: PluginsApi     // §16.2 — read-only installed-plugin list
   storage: StorageArea    // §13 — kernel infrastructure, not a fifth primitive
   diagnostics: DiagnosticsApi  // kernel infrastructure — diagnostics spec §6.2
   onDispose(fn: () => void): void
@@ -170,6 +171,7 @@ A **Command** is a named, invocable operation: one structured input in, serializ
 interface CommandsApi {
   register(command: CommandDefinition): Disposable
   execute(id: string, input?: object): Promise<unknown>
+  observe(cb: (commands: CommandRecord[]) => void): Disposable  // §16.1
 }
 
 interface CommandDefinition {
@@ -458,4 +460,99 @@ The uniform posture, applied throughout this spec:
 - **Unknown = tolerated.** Unknown manifest fields, permission strings, and activation hints: [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), preserved/carried verbatim, never an error, never a grant.
 - **Malformed = rejected [loudly](./diagnostics.md#21-loud-errors)**, blocking that plugin only.
 
-Shaped-to-be-additive future work (deliberately not v1): per-registration `bridged: false` opt-outs, wildcard and qualified permissions, the lazy-activation trigger vocabulary, an IndexedDB storage engine, and binary payload support.
+Shaped-to-be-additive future work (deliberately not v1): per-registration `bridged: false` opt-outs, wildcard and qualified permissions, the lazy-activation trigger vocabulary, an IndexedDB storage engine, binary payload support, and an observable plugin list (§16.2 is pull-only).
+
+## 16. Registry observation and the plugin list
+
+*Consolidates: #38.*
+
+The kernel's registration state is publicly readable, through two read-only surfaces: a **command observation** feed (§16.1) and a **plugin list** (§16.2), each available on both doors (§16.3). They exist for consumers that render or project the registry — toolbar adapters, inspectors, host-level glue.
+
+Both surfaces report **registration and `when` facts only** (§11): what is registered, by whom, and whether it is currently listed. They are **grant-agnostic** — no permission gates them (§12.2: there are no registry permissions) and no grant filtering is applied to what they report. A consumer that must filter — for example, to compute an agent-listable surface — applies its own filters to the records.
+
+### 16.1 Observing commands
+
+`commands.observe(cb)` (§6) subscribes to the command registry:
+
+```ts
+interface CommandRecord {
+  id: string             // name grammar (§2.1)
+  title: string
+  description?: string
+  inputSchema?: object   // carried verbatim (§6.2)
+  outputSchema?: object  // carried verbatim (§6.2)
+  annotations?: object   // carried verbatim (§6.4)
+  pluginId: string       // owning plugin id
+  listed: boolean        // current `when` state (§11): false = when-hidden
+}
+```
+
+- `observe` MUST fire **synchronously on subscribe** with the complete current array (the same replay posture as `context.observe`, §8.1), and again with the complete new array on every command registration, disposal, and `when` flip — a re-evaluation that changes `listed` (§11.1). Nothing else fires it.
+- **Snapshots, never deltas**: every callback receives the full array, in registration order. The kernel applies **no debounce** and no equality dedup; a consumer that needs coalescing debounces on its own side.
+- When-hidden commands are **included**, with `listed: false`, so inspector-style consumers see everything. A consumer building a visible or agent-facing surface filters on `listed` itself (§11.2: `when` gates listing, never dispatch).
+- A record carries the command's **data fields only** — `inputSchema`, `outputSchema`, and `annotations` are the objects passed at registration, carried verbatim. `execute`, `validate`, and `when` never appear on a record; behavior does not cross this surface. Mutating a record or its schemas is undefined behavior (§8.2's rule).
+
+### 16.2 The plugin list
+
+```ts
+interface PluginsApi {
+  list(): PluginRecord[]
+}
+
+interface PluginRecord {
+  // manifest data, verbatim (§3.1) — everything except `setup`
+  id: string
+  name: string
+  version: string
+  description?: string
+  package?: string
+  permissions?: string[]
+  activation?: string[]
+  provides?: string[]
+  requires?: string[]
+  // kernel-added
+  status: 'pending' | 'active' | 'failed'
+}
+```
+
+- `list()` returns, synchronously, one record per installed plugin, in installation order — the application developer's array (§4.2). A plugin whose manifest was rejected (§3.3) does not appear: a record needs a validated identity, and the rejection was already loud.
+- A record is the plugin's manifest data **minus `setup`** — `setup` MUST NOT be reachable through this surface — plus any unknown manifest fields, preserved verbatim (§3.3), plus the kernel-added `status`.
+- `status`: **`pending`** — not yet activated, or an async `setup` still running; **`active`** — `setup` completed; **`failed`** — capability check failed (§10.3) or `setup` threw.
+- Each call returns a fresh snapshot; mutating a record is undefined behavior. The list is a pull, not a feed — there is no plugin-list observation in v1 (recorded future, §15); a consumer wanting fresher `status` calls `list()` again.
+
+### 16.3 Both doors
+
+Both surfaces appear **twice, under the same names**:
+
+- on **`PluginApi`** (§5) — `api.commands.observe(…)`, `api.plugins.list()` — for plugins: toolbar adapters, third-party adapters, inspectors;
+- on the **kernel instance** returned by `createSwitchboard()` — `kernel.commands.observe(…)`, `kernel.plugins.list()` — for host-level glue that is not a plugin.
+
+The two doors expose the same data with the same semantics; nothing is reachable through one that is hidden from the other. (This section fixes only these two surfaces on the instance; the rest of the instance's shape is outside this section's scope.)
+
+## 17. The kernel handoff
+
+*Consolidates: #38.*
+
+`createSwitchboard()` MUST announce every kernel instance it creates on a well-known page global, so consumers that load before or after the kernel — in either order — find it without the application wiring anything.
+
+### 17.1 The handoff point
+
+The handoff point is **`globalThis.__SWITCHBOARD__`**, a tiny push/subscribe object:
+
+```ts
+interface KernelHandoff {
+  push(kernel: unknown): void                           // announce a kernel instance
+  subscribe(cb: (kernel: unknown) => void): () => void  // replay + live; returns unsubscribe
+}
+```
+
+- Whichever code touches the global **first creates it** (`globalThis.__SWITCHBOARD__ ??= …`); everyone else reuses what it finds. The kernel and any consumer each carry the same tiny shim inline; this section's shape and semantics are the contract, so independently shipped copies interoperate.
+- `push(kernel)` announces a kernel and retains it, for the page's lifetime, for replay.
+- `subscribe(cb)` MUST synchronously replay every kernel already announced, in announce order, then fire once per future `push`. Order-independence follows: it does not matter whether the kernel or its consumer ran first.
+- The handoff carries kernel instances and nothing else — no configuration, no consumer-specific payloads.
+
+Announcing is unconditional — it is not dev-gated; the handoff is load-bearing wiring, not a diagnostic. The full `createSwitchboard` signature and lifecycle are outside this section's scope.
+
+### 17.2 First kernel wins
+
+One page has one kernel. Announcing a **second** kernel on the same page MUST emit a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) on the second instance's diagnostics channel. Single-kernel consumers MUST attach to the **first** kernel announced and ignore later ones: first wins.

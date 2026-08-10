@@ -197,7 +197,7 @@ Items **cluster by contributing plugin** (`source`, §4.1): each plugin's items 
 
 **Cluster sequence is plugin activation order** — the same application-developer-owned array the kernel refuses to reorder ([§4.2](./kernel-api.md#42-activation)). Placement disputes between plugins resolve in the application developer's plugin array, not in published packages.
 
-*(Non-normative: an adapter typically derives this order from the order of each plugin's first contribution, which coincides with activation order for contributions made during `setup` — the normal case. How an adapter observes kernel registration state is adapter-internal in v1 and not part of the public plugin API.)*
+*(Non-normative: an adapter typically derives this order from the order of each plugin's first contribution, which coincides with activation order for contributions made during `setup` — the normal case. An adapter observes kernel registration state through the kernel's public observation surface — [kernel spec §16](./kernel-api.md#16-registry-observation-and-the-plugin-list).)*
 
 ### 6.2 Order within a cluster
 
