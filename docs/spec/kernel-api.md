@@ -6,7 +6,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in
 
 TypeScript signatures and typed-JSON shape blocks in this document are **normative**. Prose qualifies them; it does not override them.
 
-This document is the one normative home for three cross-cutting rules: the **naming grammar** (§2), the **permission vocabulary** (§12), and the **wire-legal rule** (§14). Every other document in the spec suite cites these sections by link and MUST NOT paraphrase them. Related documents: [`bridge-protocol.md`](./bridge-protocol.md) (what the bridge does about these contracts), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
+This document is the one normative home for three cross-cutting rules: the **naming grammar** (§2), the **permission vocabulary** (§12), and the **wire-legal rule** (§14). Every other document in the spec suite cites these sections by link and MUST NOT paraphrase them. The words **loud**, **named error**, and **dev-mode warning**, used throughout, are defined once in [`diagnostics.md`](./diagnostics.md). Related documents: [`bridge-protocol.md`](./bridge-protocol.md) (what the bridge does about these contracts), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
 
 *Consolidates (non-normative): the resolutions of tickets #5, #6, #8, #12, #16 and the schema-authoring research ([`docs/research/schema-authoring-for-commands.md`](../research/schema-authoring-for-commands.md)).*
 
@@ -36,11 +36,11 @@ One grammar covers every registerable name:
 
 Dots express hierarchy; hyphens join words; `@` appears only as the capability version separator (§10.1) and is not part of any name. The grammar is strictly within MCP's tool-name character set, so names pass to the bridge verbatim, never sanitized.
 
-The kernel MUST validate every name at registration with one shared validator and reject violations with a loud error.
+The kernel MUST validate every name at registration with one shared validator and reject violations with a [loud error](./diagnostics.md#21-loud-errors).
 
 ### 2.2 Name kinds
 
-Six name kinds share the grammar. Four are **exclusive** — registering a taken name is a loud error:
+Six name kinds share the grammar. Four are **exclusive** — registering a taken name is a [loud error](./diagnostics.md#21-loud-errors):
 
 - command ids
 - service names
@@ -58,7 +58,7 @@ Plugin ids SHOULD be two segments, `publisher.name` (e.g. `acme.perf-panel`). Th
 
 ### 2.4 Prefixes and the reserved namespace
 
-A plugin's registrations live under its chosen namespace **by convention**; the kernel MUST NOT enforce prefix ownership — with one exception: **`switchboard.*` is reserved for the kernel itself.** Any plugin registration under `switchboard.*` MUST be rejected with a loud error. First-party reference plugins are not exempt (they use `metrics.*`, `dom.*`, `a11y.*`, `feedback.*`).
+A plugin's registrations live under its chosen namespace **by convention**; the kernel MUST NOT enforce prefix ownership — with one exception: **`switchboard.*` is reserved for the kernel itself.** Any plugin registration under `switchboard.*` MUST be rejected with a [loud error](./diagnostics.md#21-loud-errors). First-party reference plugins are not exempt (they use `metrics.*`, `dom.*`, `a11y.*`, `feedback.*`).
 
 ### 2.5 The colon grammar (permissions and activation hints)
 
@@ -104,9 +104,9 @@ Manifest fields — in particular `id`, `provides`, and `requires` — MUST be w
 
 ### 3.3 Manifest validation
 
-Malformed manifests MUST be rejected loudly: missing required fields (`id`, `name`, `version`, `setup`), an `id` violating the name grammar, a non-semver `version`, or `provides`/`requires`/`permissions`/`activation` entries violating their grammars. A manifest error blocks **that plugin only**; other plugins proceed.
+Malformed manifests MUST be rejected [loudly](./diagnostics.md#21-loud-errors): missing required fields (`id`, `name`, `version`, `setup`), an `id` violating the name grammar, a non-semver `version`, or `provides`/`requires`/`permissions`/`activation` entries violating their grammars. A manifest error blocks **that plugin only**; other plugins proceed.
 
-Unknown manifest **fields** MUST be tolerated: preserved verbatim, surfaced as a dev-mode warning, never an error. See §15 for the full forward-compatibility posture.
+Unknown manifest **fields** MUST be tolerated: preserved verbatim, surfaced as a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), never an error. See §15 for the full forward-compatibility posture.
 
 ## 4. Activation and lifecycle
 
@@ -114,7 +114,7 @@ Unknown manifest **fields** MUST be tolerated: preserved verbatim, surfaced as a
 
 ### 4.1 Activation hints
 
-`activation?: string[]` lists additive wake conditions — any one suffices to wake the plugin. Hints use the colon grammar (§12.1). The v1 vocabulary is exactly one word: **`eager`**, which is also the default when the field is omitted. Unknown hints MUST be behaviorally ignored with a dev-mode warning.
+`activation?: string[]` lists additive wake conditions — any one suffices to wake the plugin. Hints use the colon grammar (§12.1). The v1 vocabulary is exactly one word: **`eager`**, which is also the default when the field is omitted. Unknown hints MUST be behaviorally ignored with a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings).
 
 (The lazy-trigger vocabulary is deliberately not designed in v1; this field is the seam it will occupy, since with imperative registration future lazy activation must be driven entirely by manifest pre-declaration.)
 
@@ -151,9 +151,12 @@ interface PluginApi {
   context: ContextApi     // §8
   services: ServicesApi   // §9
   storage: StorageArea    // §13 — kernel infrastructure, not a fifth primitive
+  diagnostics: DiagnosticsApi  // kernel infrastructure — diagnostics spec §6.2
   onDispose(fn: () => void): void
 }
 ```
+
+The `diagnostics` surface — emitting on and subscribing to the kernel's diagnostics channel — is defined in the diagnostics spec ([§6.2](./diagnostics.md#62-the-plugin-surface-apidiagnostics)).
 
 Terminology rule: the word **Context** belongs exclusively to the primitive. The setup parameter is `api`, typed `PluginApi` — never "PluginContext".
 
@@ -189,7 +192,7 @@ interface Invocation {
 
 ### 6.1 Registration and dispatch
 
-- Command ids MUST satisfy the name grammar (§2.1) — which keeps them within MCP's `[A-Za-z0-9_.-]`, ≤ 128 chars — and MUST be unique (exclusive kind, §2.2). Violations are loud registration errors. Ids pass to the bridge verbatim as tool names; the bridge never sanitizes.
+- Command ids MUST satisfy the name grammar (§2.1) — which keeps them within MCP's `[A-Za-z0-9_.-]`, ≤ 128 chars — and MUST be unique (exclusive kind, §2.2). Violations are [loud](./diagnostics.md#21-loud-errors) registration errors. Ids pass to the bridge verbatim as tool names; the bridge never sanitizes.
 - `execute` takes a single structured input object (mirroring MCP `tools/call`) and returns a JSON-safe value (wire-legal, §14). The handler MAY be sync or async; callers always receive a Promise.
 - The handler is named `execute` for shape-compatibility with W3C WebMCP `ModelContext.registerTool` and vocabulary symmetry with `commands.execute`.
 - Errors thrown by the handler become structured invocation errors wrapped with the command id. (At the bridge these map to MCP `isError: true` results — see the bridge protocol spec.)
@@ -286,15 +289,15 @@ interface ServicesApi {
 }
 ```
 
-- Service names are exclusive (§2.2): duplicate registration is a loud named error. Disposal unregisters.
-- `await services.get(name)` resolves the moment the provider registers — activation-order-insensitive without a resolver. It MUST reject **immediately** with a loud named error when no installed plugin `provides` the corresponding capability (it never hangs; the capability check guarantees this). If the provider's own `setup` fails, pending `get`s reject with that failure.
+- Service names are exclusive (§2.2): duplicate registration is a [loud named error](./diagnostics.md#21-loud-errors). Disposal unregisters.
+- `await services.get(name)` resolves the moment the provider registers — activation-order-insensitive without a resolver. It MUST reject **immediately** with a [loud named error](./diagnostics.md#21-loud-errors) when no installed plugin `provides` the corresponding capability (it never hangs; the capability check guarantees this). If the provider's own `setup` fails, pending `get`s reject with that failure.
 - `tryGet(name)` returns the current value or `undefined`, synchronously, for soft dependencies — no `requires` entry needed.
 
 ## 10. Capabilities
 
 *Consolidates: #5.*
 
-Switchboard's capability posture is **checked, not solved**: a flat presence-and-version check with loud named errors. No dependency resolver, no activation reordering, no graph.
+Switchboard's capability posture is **checked, not solved**: a flat presence-and-version check with [loud named errors](./diagnostics.md#21-loud-errors). No dependency resolver, no activation reordering, no graph.
 
 ### 10.1 Declarations
 
@@ -302,7 +305,7 @@ A capability is an opaque named claim. Entries in `provides` are `name` or `name
 
 ### 10.2 Single provider
 
-**At most one installed plugin may provide a given capability name.** A duplicate `provides` is a loud activation error. This structurally eliminates provider choice, transitive conflicts, and any drift toward a solver.
+**At most one installed plugin may provide a given capability name.** A duplicate `provides` is a [loud](./diagnostics.md#21-loud-errors) activation error. This structurally eliminates provider choice, transitive conflicts, and any drift toward a solver.
 
 ### 10.3 The check
 
@@ -314,7 +317,7 @@ Diagnostic errors MUST name the requiring plugin, the required string, and every
 
 ### 10.4 Manifest-drift warning
 
-The kernel SHOULD emit a dev-mode warning when a registered service name appears in no plugin's `provides` entry.
+The kernel SHOULD emit a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) when a registered service name appears in no plugin's `provides` entry.
 
 ## 11. Visibility predicates (`when`)
 
@@ -350,7 +353,7 @@ This section is the one normative home for the permission vocabulary. Bridge-gra
 
 A permission string is **`area:action`** — exactly two segments in v1, colon-separated, each a lowercase kebab word (`[a-z0-9-]+`). A third **qualifier** segment is reserved for future scoping (e.g. `network:observe:<name>`); qualifier segments MAY be full kebab-dot names. v1 defines no qualified permissions and no wildcards.
 
-The governing rule: **every permission string must name a surface the kernel or bridge could actually gate** — an interceptable choke point. `area` names the surface, `action` the mode of access. Nothing aspirational gets a string. One validator, loud errors on malformed strings.
+The governing rule: **every permission string must name a surface the kernel or bridge could actually gate** — an interceptable choke point. `area` names the surface, `action` the mode of access. Nothing aspirational gets a string. One validator, [loud errors](./diagnostics.md#21-loud-errors) on malformed strings.
 
 ### 12.2 The v1 vocabulary — eight strings
 
@@ -369,7 +372,7 @@ Every permission carries an explicit **enforcement status**. Flipping advisory �
 
 The `bridge:*` family is **default-closed and all-or-nothing per family per plugin**; permission = *existence* at the bridge, `when` = *listing* (§11.2). The advisory family is the future sandboxing seam: descriptive in v1, gateable later.
 
-An **unknown** permission string is tolerated (dev-mode warning, carried verbatim) and **grants nothing** — the kernel and bridge honor only strings they know, so unknown is fail-safe in both directions. A **malformed** string is loudly rejected (§3.3).
+An **unknown** permission string is tolerated ([dev-mode warning](./diagnostics.md#22-dev-mode-warnings), carried verbatim) and **grants nothing** — the kernel and bridge honor only strings they know, so unknown is fail-safe in both directions. A **malformed** string is [loudly](./diagnostics.md#21-loud-errors) rejected (§3.3).
 
 There are no registry permissions (`commands:register` etc.) — registering primitives is what a plugin *is* — and no `bridge:storage` (§13.6).
 
@@ -416,7 +419,7 @@ Value **shape** is plugin-owned under the **defensive read** convention: storage
 
 ### 13.5 Permission: `storage:use`
 
-`storage:use` (§12.2) is **enforced and default-closed**: without the grant, `api.storage` is present (no shape surprises) but every call MUST reject loudly with a named error naming the missing permission. There is deliberately no `storage:read`/`storage:write` pair — namespacing means a plugin can only read what it wrote, so a read-only grant is incoherent.
+`storage:use` (§12.2) is **enforced and default-closed**: without the grant, `api.storage` is present (no shape surprises) but every call MUST reject [loudly](./diagnostics.md#21-loud-errors) with a [named error](./diagnostics.md#3-named-errors-switchboarderror) naming the missing permission. There is deliberately no `storage:read`/`storage:write` pair — namespacing means a plugin can only read what it wrote, so a read-only grant is incoherent.
 
 ### 13.6 Storage never bridges
 
@@ -452,7 +455,7 @@ The manifest schema, activation-hint vocabulary, and permission vocabulary are k
 
 The uniform posture, applied throughout this spec:
 
-- **Unknown = tolerated.** Unknown manifest fields, permission strings, and activation hints: dev-mode warning, preserved/carried verbatim, never an error, never a grant.
-- **Malformed = rejected loudly**, blocking that plugin only.
+- **Unknown = tolerated.** Unknown manifest fields, permission strings, and activation hints: [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), preserved/carried verbatim, never an error, never a grant.
+- **Malformed = rejected [loudly](./diagnostics.md#21-loud-errors)**, blocking that plugin only.
 
 Shaped-to-be-additive future work (deliberately not v1): per-registration `bridged: false` opt-outs, wildcard and qualified permissions, the lazy-activation trigger vocabulary, an IndexedDB storage engine, and binary payload support.

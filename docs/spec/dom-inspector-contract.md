@@ -6,7 +6,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in
 
 TypeScript signatures and typed-JSON shape blocks in this document are **normative**. Prose qualifies them; it does not override them.
 
-This is a **capability contract**: it binds whichever plugin provides the `dom.inspector` capability, and it is the one normative home for element identity in Switchboard. The kernel spec deliberately contains no DOM vocabulary ([kernel spec §1](./kernel-api.md#1-scope)); the cross-cutting rules this document leans on — the naming grammar, the permission vocabulary, and the wire-legal rule — live in [`kernel-api.md`](./kernel-api.md) and are cited, never restated. Bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md). Related documents: [`toolbar-contract.md`](./toolbar-contract.md) (this document's structural twin), [`plugins/inspector.md`](./plugins/inspector.md) (the v1 reference provider's brief).
+This is a **capability contract**: it binds whichever plugin provides the `dom.inspector` capability, and it is the one normative home for element identity in Switchboard. The kernel spec deliberately contains no DOM vocabulary ([kernel spec §1](./kernel-api.md#1-scope)); the cross-cutting rules this document leans on — the naming grammar, the permission vocabulary, and the wire-legal rule — live in [`kernel-api.md`](./kernel-api.md) and are cited, never restated; the words **named error** and **loud** are defined in [`diagnostics.md`](./diagnostics.md). Bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md). Related documents: [`toolbar-contract.md`](./toolbar-contract.md) (this document's structural twin), [`plugins/inspector.md`](./plugins/inspector.md) (the v1 reference provider's brief).
 
 *Consolidates (non-normative): the resolutions of tickets #12 (element identity & serializable data contracts), #14 (reference plugin briefs — service-side `describe`), and #16 (assembly — the `dom.pick-element` dual outcome, resolving #13's flag).*
 
@@ -96,7 +96,7 @@ Consequently there is **no `release()` API in v1** — consumers have nothing to
 
 Resolution has exactly one failure mode, the **stale reference** error: the node has been collected, or the id is not known to this registry (never minted here, or minted in a previous page session).
 
-The contract deliberately does not distinguish *unknown* from *expired*: WeakRef pruning makes the distinction unreliable exactly when it would matter, so a two-error vocabulary would be a lie. Providers MUST surface staleness as a single named error (from `describe`, §4; and the describe command, §5.2) or as `null` (from `resolve`, §4) — never as a fabricated empty result.
+The contract deliberately does not distinguish *unknown* from *expired*: WeakRef pruning makes the distinction unreliable exactly when it would matter, so a two-error vocabulary would be a lie. Providers MUST surface staleness as a single [named error](./diagnostics.md#3-named-errors-switchboarderror) — code `stale-reference` ([diagnostics spec §5.3](./diagnostics.md#53-capability-contract-codes)) — from `describe` (§4) and the describe command (§5.2), or as `null` (from `resolve`, §4) — never as a fabricated empty result.
 
 ### 3.3 Detachment is not death
 

@@ -6,7 +6,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in
 
 TypeScript signatures and typed-JSON shape blocks in this document are **normative**. Prose qualifies them; it does not override them.
 
-This document is the one normative home for two cross-cutting concerns: **bridge-grant mechanics** (§3) — existence-at-the-bridge, all-or-nothing per family, act-based attribution — and the **enforcement point of the wire-legal rule** (§12). The permission *vocabulary* and the wire-legal *definition* live in the kernel spec ([§12](./kernel-api.md#12-permissions) and [§14](./kernel-api.md#14-the-wire-legal-rule)); this document cites them and MUST NOT be read as redefining them. Related documents: [`kernel-api.md`](./kernel-api.md), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
+This document is the one normative home for two cross-cutting concerns: **bridge-grant mechanics** (§3) — existence-at-the-bridge, all-or-nothing per family, act-based attribution — and the **enforcement point of the wire-legal rule** (§12). The permission *vocabulary* and the wire-legal *definition* live in the kernel spec ([§12](./kernel-api.md#12-permissions) and [§14](./kernel-api.md#14-the-wire-legal-rule)); this document cites them and MUST NOT be read as redefining them. The words **loud**, **named error**, and **dev-mode** are defined in [`diagnostics.md`](./diagnostics.md). Related documents: [`kernel-api.md`](./kernel-api.md), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
 
 *Consolidates (non-normative): the resolution of ticket #11 (fourteen locked decisions, absorbing #15), the transport-spike validation and implementation findings of #9 ([`spikes/mcp-bridge-transport/FINDINGS.md`](../../spikes/mcp-bridge-transport/FINDINGS.md)), the transport research of #2 ([`docs/research/mcp-live-page-transport.md`](../research/mcp-live-page-transport.md)), and the adapter-hosting research of #17 ([`docs/research/adapter-next-hosting.md`](../research/adapter-next-hosting.md)).*
 
@@ -105,8 +105,8 @@ The carrying channel MUST deliver messages **in order, reliably, in both directi
 
 The kernel's uniform posture ([kernel spec §15](./kernel-api.md#15-versioning-and-forward-compatibility)) applies on the wire:
 
-- **Unknown message types and unknown fields MUST be tolerated**: ignored (fields: preserved where echoed), with a dev-mode diagnostic. This is what makes additive evolution possible without a version bump (§16).
-- **Malformed messages** (no `type`, unparseable JSON, a shape violating this spec) MUST produce a loud diagnostic; the receiver MAY close the connection.
+- **Unknown message types and unknown fields MUST be tolerated**: ignored (fields: preserved where echoed), with a [dev-mode diagnostic](./diagnostics.md#22-dev-mode-warnings). This is what makes additive evolution possible without a version bump (§16).
+- **Malformed messages** (no `type`, unparseable JSON, a shape violating this spec) MUST produce a [loud](./diagnostics.md#21-loud-errors) diagnostic; the receiver MAY close the connection.
 
 *Consolidates: #11 (decisions 5, 8).*
 
@@ -352,9 +352,9 @@ The wire-legal rule — definition and unconditional binding on Command inputs/r
 
 Enforcement happens **where serialization already happens** — the page-side channel edge and the bridge's MCP edge — not by a separate validation pass:
 
-- A value that cannot survive strict JSON serialization MUST become a **loud, attributed error** — naming the command (for inputs/results), event name, or context key, and the responsible plugin — never a silent mangling (no dropped `undefined`s pretending nothing happened, no `{}`-ified `Map`s).
+- A value that cannot survive strict JSON serialization MUST become a **[loud](./diagnostics.md#21-loud-errors), attributed error** — naming the command (for inputs/results), event name, or context key, and the responsible plugin — never a silent mangling (no dropped `undefined`s pretending nothing happened, no `{}`-ified `Map`s).
 - Enforcement is unconditional: it applies to every value crossing the wire, regardless of which grants are held ([kernel spec §14.2](./kernel-api.md#142-binding)).
-- At the agent edge these surface as `isError` tool results (§10.5); page-side they surface as dev-mode errors attributed to the acting plugin.
+- At the agent edge these surface as `isError` tool results (§10.5); page-side they surface as [loud errors](./diagnostics.md#21-loud-errors) attributed to the acting plugin.
 
 *Consolidates: #12 (via kernel spec §14), #11.*
 
