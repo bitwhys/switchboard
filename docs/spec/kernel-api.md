@@ -8,7 +8,7 @@ TypeScript signatures and typed-JSON shape blocks in this document are **normati
 
 This document is the one normative home for three cross-cutting rules: the **naming grammar** (§2), the **permission vocabulary** (§12), and the **wire-legal rule** (§14). Every other document in the spec suite cites these sections by link and MUST NOT paraphrase them. The words **loud**, **named error**, and **dev-mode warning**, used throughout, are defined once in [`diagnostics.md`](./diagnostics.md). Related documents: [`bridge-protocol.md`](./bridge-protocol.md) (what the bridge does about these contracts), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
 
-*Consolidates (non-normative): the resolutions of tickets #5, #6, #8, #12, #16, #38 and the schema-authoring research ([`docs/research/schema-authoring-for-commands.md`](../research/schema-authoring-for-commands.md)).*
+*Consolidates (non-normative): the resolutions of tickets #5, #6, #8, #12, #16, #38, #44 and the schema-authoring research ([`docs/research/schema-authoring-for-commands.md`](../research/schema-authoring-for-commands.md)).*
 
 ---
 
@@ -187,7 +187,7 @@ interface CommandDefinition {
 }
 
 interface Invocation {
-  source: 'ui' | 'agent' | 'plugin'
+  source: 'ui' | 'agent' | 'plugin' | 'host'   // 'host': via the kernel instance (§18.2)
   signal: AbortSignal
 }
 ```
@@ -236,7 +236,7 @@ interface EventsApi {
 }
 
 interface EmitMeta {
-  source: string      // emitting plugin id
+  source: string      // emitting plugin id, or 'host' for acts through the kernel instance (§18.2)
   timestamp: number
 }
 ```
@@ -406,12 +406,12 @@ There is no namespace parameter anywhere in the plugin-facing API: a plugin cann
 
 ### 13.3 Engines
 
-The application developer passes a **storage engine** at kernel construction (`createSwitchboard({ storage: engine })`) — one engine per kernel instance, never chosen by or visible to plugins. The engine interface is **public API**; third parties can ship engines without kernel changes.
+The application developer passes a **storage engine** at kernel construction — the `storage` option of `createSwitchboard` (§18.1) — one engine per kernel instance, never chosen by or visible to plugins. The engine interface is **public API**; third parties can ship engines without kernel changes.
 
 v1 `core` ships exactly two engines:
 
 - **`localStorageEngine`** — the default. Key-prefixed (`switchboard:<plugin-id>:<key>`), async façade over sync calls.
-- **`memoryEngine`** — Map-backed, non-durable: tests, SSR/non-DOM environments, explicit no-persistence — and the automatic fallback when `localStorage` throws, so `api.storage` never hard-fails (worst case it degrades to session lifetime).
+- **`memoryEngine`** — Map-backed, non-durable: tests and other non-DOM environments (construction never crashes off-DOM; server-side construction stays unsupported regardless, §18.4), explicit no-persistence — and the automatic fallback when `localStorage` throws, so `api.storage` never hard-fails (worst case it degrades to session lifetime).
 
 ### 13.4 Durability: reachability, not shape
 
@@ -527,7 +527,7 @@ Both surfaces appear **twice, under the same names**:
 - on **`PluginApi`** (§5) — `api.commands.observe(…)`, `api.plugins.list()` — for plugins: toolbar adapters, third-party adapters, inspectors;
 - on the **kernel instance** returned by `createSwitchboard()` — `kernel.commands.observe(…)`, `kernel.plugins.list()` — for host-level glue that is not a plugin.
 
-The two doors expose the same data with the same semantics; nothing is reachable through one that is hidden from the other. (This section fixes only these two surfaces on the instance; the rest of the instance's shape is outside this section's scope.)
+The two doors expose the same data with the same semantics; nothing is reachable through one that is hidden from the other. (This section fixes only these two surfaces on the instance; the full instance shape is §18.2.)
 
 ## 17. The kernel handoff
 
@@ -542,17 +542,83 @@ The handoff point is **`globalThis.__SWITCHBOARD__`**, a tiny push/subscribe obj
 ```ts
 interface KernelHandoff {
   push(kernel: unknown): void                           // announce a kernel instance
-  subscribe(cb: (kernel: unknown) => void): () => void  // replay + live; returns unsubscribe
+  retract(kernel: unknown): void                        // withdraw an announce (§17.3)
+  subscribe(
+    cb: (kernel: unknown) => void,                      // replay + live
+    onRetract?: (kernel: unknown) => void               // fires per future retraction
+  ): () => void                                         // returns unsubscribe
 }
 ```
 
 - Whichever code touches the global **first creates it** (`globalThis.__SWITCHBOARD__ ??= …`); everyone else reuses what it finds. The kernel and any consumer each carry the same tiny shim inline; this section's shape and semantics are the contract, so independently shipped copies interoperate.
-- `push(kernel)` announces a kernel and retains it, for the page's lifetime, for replay.
-- `subscribe(cb)` MUST synchronously replay every kernel already announced, in announce order, then fire once per future `push`. Order-independence follows: it does not matter whether the kernel or its consumer ran first.
+- `push(kernel)` announces a kernel and retains it for replay until it is retracted (§17.3).
+- `subscribe(cb)` MUST synchronously replay every kernel currently announced and not retracted, in announce order, then fire once per future `push`. Order-independence follows: it does not matter whether the kernel or its consumer ran first.
 - The handoff carries kernel instances and nothing else — no configuration, no consumer-specific payloads.
 
-Announcing is unconditional — it is not dev-gated; the handoff is load-bearing wiring, not a diagnostic. The full `createSwitchboard` signature and lifecycle are outside this section's scope.
+Announcing is unconditional — it is not dev-gated; the handoff is load-bearing wiring, not a diagnostic. The full `createSwitchboard` signature and lifecycle are §18's.
 
-### 17.2 First kernel wins
+### 17.2 First live kernel wins
 
-One page has one kernel. Announcing a **second** kernel on the same page MUST emit a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) on the second instance's diagnostics channel. Single-kernel consumers MUST attach to the **first** kernel announced and ignore later ones: first wins.
+One page has one kernel. Announcing a second kernel while a first is still live (announced and not retracted) MUST emit a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) on the second instance's diagnostics channel. Single-kernel consumers MUST attach to the **first** kernel they receive and ignore later pushes while it remains live: first wins.
+
+### 17.3 Retraction
+
+`dispose()` (§18.2) MUST retract the instance's own announce via `retract(kernel)`:
+
+- A retracted kernel no longer appears in `subscribe` replay, and no longer counts as live for §17.2 — so dispose-then-construct replaces a kernel without tripping the second-kernel warning. This is the HMR escape hatch: a hot-reloaded setup module disposes the old kernel (e.g. in `import.meta.hot.dispose`) before constructing the new one.
+- `retract` with a never-announced or already-retracted kernel is a no-op.
+- Subscribers learn of a retraction through the optional `onRetract` callback (no replay of past retractions — a kernel retracted before `subscribe` simply never appears). A single-kernel consumer whose kernel is retracted detaches and treats the next `push` as first again.
+
+## 18. Constructing the kernel: `createSwitchboard`
+
+*Consolidates: #44.*
+
+The application developer turns Switchboard on by calling `createSwitchboard` once, in client code. This section is the normative home for the construction surface: the signature, the returned instance, the failure envelope, and the one-kernel topology rule. What an app developer actually types per host — setup modules, dev gating, adapter bootstrap wiring — is adapter-contract territory, not this document's.
+
+### 18.1 Signature
+
+```ts
+function createSwitchboard(options: {
+  plugins: PluginDefinition[]          // REQUIRED; activation order = array order (§4.2)
+  storage?: StorageEngine              // default: localStorageEngine (§13.3)
+  dev?: boolean                        // default: true (diagnostics spec §7)
+  diagnostics?: { console?: boolean }  // console reporter switch (diagnostics spec §6.3)
+}): Switchboard
+```
+
+- `createSwitchboard` is **synchronous**: it returns the instance immediately, and the §17 announce fires synchronously inside the call — no consumer can race construction, and host entry points never need a top-level await.
+- Activation — checking capabilities and awaiting each plugin's `setup` in order (§4.2) — proceeds from the call but is not awaited by the caller. `ready` (§18.2) is the settling signal.
+- The `plugins` array **is** the activation-order promise of §4.2: the kernel activates in array order, verbatim. There is no builder or incremental `add()` API and MUST NOT be one — the array is the single ordering surface.
+- The other options are defined by their owning sections and only cross-linked here: storage engines §13.3, dev mode diagnostics spec §7, the console reporter diagnostics spec §6.3.
+
+### 18.2 The instance
+
+```ts
+interface Switchboard {
+  commands: CommandsApi            // §6 — incl. execute() and observe() (§16.1)
+  events: EventsApi                // §7
+  context: ContextApi              // §8
+  services: ServicesApi            // §9
+  plugins: PluginsApi              // §16.2
+  diagnostics: DiagnosticsChannel  // diagnostics spec §6.1
+  ready: Promise<void>
+  dispose(): void
+}
+```
+
+- The instance is a **full host door**: the four primitive APIs with the same names and semantics as `PluginApi` (§5), plus the two read surfaces of §16 (per §16.3) and the diagnostics channel. v1 trusts in-page code (§1); withholding primitives from the application that constructed the kernel would protect nothing.
+- Acts through the instance are attributed to the reserved **`host`** party wherever an acting party is stamped: `EmitMeta.source` (§7, §8), `Invocation.source` (§6), and diagnostics attribution (diagnostics spec §4.1).
+- `ready` resolves when eager activation has settled — every installed plugin has reached `active` or `failed` (§16.2). It **settles always and MUST NOT reject**: per-plugin failures are already loud on the diagnostics channel, and who made it is legible in `plugins.list()`.
+- `dispose()` tears down every plugin (§4.3), then the kernel, and **retracts the instance's §17 announce** (§17.3). It is the sanctioned replace path under HMR and the test-isolation primitive: dispose, then construct fresh.
+
+### 18.3 Failure envelope
+
+`createSwitchboard` throws synchronously **only on structurally unusable options**: a missing or non-array `plugins`, or a `storage` value that is not a storage engine. The throw is a [named error](./diagnostics.md#3-named-errors-switchboarderror) with code `invalid-options`; it happens before any kernel exists, so no channel emission accompanies it — the stack trace is the diagnostic, and there is no error-state instance to observe. Construction only fails on code visible in that stack trace.
+
+Everything past that boundary is contained per-plugin, exactly as the owning sections already specify: manifest rejection (§3.3), a duplicate plugin id (first wins, second blocked loudly — §2.2), a failed capability check (§10.3), a throwing `setup` (§4.2), and a broken `localStorage` falling back to `memoryEngine` (§13.3).
+
+### 18.4 Topology: client-only, one kernel per tab
+
+A kernel is a **client-only, once-per-tab** runtime, constructed after the page is running in a browser. Server code MUST NOT construct one: SSR never calls `createSwitchboard`. (`memoryEngine` keeping construction from crashing off-DOM — §13.3 — is for tests and harnesses, not a supported server integration.)
+
+One page has one kernel (§17.2); `dispose()` then construct is the one sanctioned way to replace it (§17.3). The kernel itself stays environment-agnostic — it never sniffs `NODE_ENV` or any bundler marker (diagnostics spec §7); keeping it out of production builds is the integration pattern's job, owned by the adapter contract.
