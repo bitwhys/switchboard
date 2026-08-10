@@ -1,2 +1,36 @@
-// Scaffold placeholder — replaced by this package's build tickets (spec: docs/spec/).
-export const ENTRY_NODE = "@switchboard-dev/bridge-mcp/node";
+// @switchboard-dev/bridge-mcp/node — the bridge component itself, run in the
+// dev-server process (bridge spec §1). Adapters construct a Bridge, ferry
+// wire messages between it and their page channel, and mount (or start) the
+// MCP door.
+
+export {
+	Bridge,
+	type BridgeOptions,
+	type ContextReadOutcome,
+	createBridge,
+	type InvokeOutcome,
+	type PageConnection,
+	type RegistryListener,
+	type TailEntry,
+} from "./node/core";
+export {
+	type DiagnosticWriter,
+	stderrDiagnosticWriter,
+} from "./node/diagnostics";
+export {
+	type BridgeServer,
+	type BridgeServerOptions,
+	createMcpHandler,
+	DEFAULT_BRIDGE_PORT,
+	type McpHandler,
+	type McpHandlerOptions,
+	startBridgeServer,
+} from "./node/http";
+export { createMcpSession } from "./node/mcp";
+export {
+	BRIDGE_PROTOCOL_VERSION,
+	type BridgeMessage,
+	type PageMessage,
+	type WireCommand,
+	type WireMessage,
+} from "./protocol";
