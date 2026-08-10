@@ -6,6 +6,7 @@ import type { Diagnostic, DiagnosticSeverity } from "./diagnostics";
 import type { Disposable } from "./disposable";
 import type { EventsApi } from "./events";
 import type { ServicesApi } from "./services";
+import type { StorageArea } from "./storage";
 
 /** Kernel spec §3.1 — the single definition object: static manifest + entry point. */
 export interface PluginDefinition {
@@ -36,13 +37,15 @@ export interface DiagnosticsApi {
 /**
  * Kernel spec §5 — the plugin's only door into the kernel, grouped by
  * primitive plus kernel infrastructure. Still to land: `plugins`
- * (§16.2, host-surface slice) and `storage` (§13 slice).
+ * (§16.2, host-surface slice).
  */
 export interface PluginApi {
 	commands: CommandsApi;
 	events: EventsApi;
 	context: ContextApi;
 	services: ServicesApi;
+	/** §13 — always present; gated by `storage:use` (§13.5). */
+	storage: StorageArea;
 	diagnostics: DiagnosticsApi;
 	onDispose(fn: () => void): void;
 }

@@ -1,10 +1,20 @@
 import { expect, it } from "vitest";
-import { definePlugin, SwitchboardError } from "../src/index";
+import {
+	definePlugin,
+	localStorageEngine,
+	memoryEngine,
+	SwitchboardError,
+} from "../src/index";
 import { createKernel } from "../src/kernel";
 
 it("exposes the §2–§4 slice surface: definePlugin and SwitchboardError", () => {
 	expect(typeof definePlugin).toBe("function");
 	expect(typeof SwitchboardError).toBe("function");
+});
+
+it("exposes the §13.3 engines: localStorageEngine and memoryEngine (the engine interface is public API)", () => {
+	expect(typeof localStorageEngine).toBe("function");
+	expect(typeof memoryEngine).toBe("function");
 });
 
 it("kernel §18.3: structurally unusable options throw a named invalid-options error, before any kernel exists", () => {
