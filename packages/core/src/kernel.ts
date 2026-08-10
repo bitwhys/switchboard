@@ -1,19 +1,41 @@
-// Kernel spec §4 — installation, activation, and teardown — and §5's
-// PluginApi wiring over the four primitives (§6–§9). This internal
-// factory grows into `createSwitchboard` (§18) when the host-surface
-// slice lands the handoff and the remaining §16 surfaces.
+// Kernel spec §4 — installation, activation, and teardown — §5's
+// PluginApi wiring over the four primitives (§6–§9), and §18.2's
+// instance: the full host door `createSwitchboard` (switchboard.ts)
+// wraps with the §17 announce.
 
 import satisfies from "semver/functions/satisfies.js";
-import { type CommandRegistry, createCommandRegistry } from "./commands";
-import { type ContextStore, createContextStore } from "./context";
-import { createDiagnosticsHub, type DiagnosticsChannel } from "./diagnostics";
+import {
+	type CommandRegistry,
+	type CommandsApi,
+	createCommandRegistry,
+} from "./commands";
+import {
+	type ContextApi,
+	type ContextStore,
+	createContextStore,
+} from "./context";
+import {
+	createDiagnosticsHub,
+	type DiagnosticsChannel,
+	type DiagnosticsHub,
+} from "./diagnostics";
 import { DisposableStore } from "./disposable";
 import { SwitchboardError } from "./errors";
-import { createEventBus, type EventBus } from "./events";
+import { createEventBus, type EventBus, type EventsApi } from "./events";
 import { validateManifest } from "./manifest";
 import { splitCapability } from "./names";
-import type { PluginApi, PluginDefinition } from "./plugin";
-import { createServiceRegistry, type ServiceRegistry } from "./services";
+import type {
+	PluginApi,
+	PluginDefinition,
+	PluginRecord,
+	PluginStatus,
+	PluginsApi,
+} from "./plugin";
+import {
+	createServiceRegistry,
+	type ServiceRegistry,
+	type ServicesApi,
+} from "./services";
 import {
 	createStorageArea,
 	isStorageEngine,
@@ -21,7 +43,9 @@ import {
 	type StorageEngine,
 } from "./storage";
 
-export interface KernelOptions {
+/** Kernel spec §18.1 — `createSwitchboard`'s options. */
+export interface SwitchboardOptions {
+	/** REQUIRED — activation order = array order (§4.2, §18.1). */
 	plugins: PluginDefinition[];
 	/** §13.3 — one engine per kernel instance; default `localStorageEngine`. */
 	storage?: StorageEngine;
@@ -31,14 +55,24 @@ export interface KernelOptions {
 	diagnostics?: { console?: boolean };
 }
 
-export interface Kernel {
+/**
+ * Kernel spec §18.2 — the instance: a full host door. The four
+ * primitives carry `PluginApi`'s names and semantics with acts
+ * attributed to the reserved `host` party, plus §16's two read
+ * surfaces and the diagnostics channel.
+ */
+export interface Switchboard {
+	commands: CommandsApi;
+	events: EventsApi;
+	context: ContextApi;
+	services: ServicesApi;
+	plugins: PluginsApi;
 	diagnostics: DiagnosticsChannel;
 	/** §18.2 — settles when activation has settled; never rejects. */
 	ready: Promise<void>;
+	/** §18.2 — tears down every plugin (§4.3), then the kernel. */
 	dispose(): void;
 }
-
-type PluginStatus = "pending" | "active" | "failed";
 
 interface InstalledPlugin {
 	definition: PluginDefinition;
@@ -48,7 +82,15 @@ interface InstalledPlugin {
 	disposables: DisposableStore;
 }
 
-export function createKernel(options: KernelOptions): Kernel {
+/**
+ * The internal factory behind `createSwitchboard` (§18): everything but
+ * the §17 announce, so tests and the public wrapper share one path.
+ * `onHub` hands the wrapper the diagnostics hub for §17.2's warning.
+ */
+export function createKernel(
+	options: SwitchboardOptions,
+	onHub?: (hub: DiagnosticsHub) => void,
+): Switchboard {
 	// §18.3: structurally unusable options throw before any kernel exists.
 	if (
 		typeof options !== "object" ||
@@ -76,6 +118,7 @@ export function createKernel(options: KernelOptions): Kernel {
 		dev,
 		console: options.diagnostics?.console !== false,
 	});
+	onHub?.(hub);
 	const installed = new Map<string, InstalledPlugin>();
 	// §10.1/§10.2: capability name → its one installed provider (with the
 	// declared version, for §10.3's satisfies check and near-miss messages).
@@ -84,13 +127,24 @@ export function createKernel(options: KernelOptions): Kernel {
 	// colliding plugin is blocked at install and indexes nothing.
 	const providers = new Map<string, { plugin: string; version?: string }>();
 
-	const commands: CommandRegistry = createCommandRegistry(hub);
-	const events: EventBus = createEventBus(hub);
 	const context: ContextStore = createContextStore(hub);
+	// §11: the command registry evaluates `when` over tracked Context reads.
+	const commands: CommandRegistry = createCommandRegistry(hub, context);
+	const events: EventBus = createEventBus(hub);
 	const services: ServiceRegistry = createServiceRegistry(hub, {
 		providerOf: (name) => providers.get(name)?.plugin,
 		failureOf: (pluginId) => installed.get(pluginId)?.failure,
 	});
+
+	// §16.2: one record per installed plugin, installation order, fresh
+	// snapshot per call — the manifest verbatim minus `setup` (unknown
+	// fields ride along, §3.3) plus the kernel-added `status`.
+	function listPlugins(): PluginRecord[] {
+		return [...installed.values()].map((plugin) => {
+			const { setup: _setup, ...manifest } = plugin.definition;
+			return { ...manifest, status: plugin.status };
+		});
+	}
 
 	// Deferred one microtask so consumers of the synchronously-returned
 	// kernel can subscribe to diagnostics before any plugin is processed
@@ -274,6 +328,8 @@ export function createKernel(options: KernelOptions): Kernel {
 				// §6: invocations through the plugin door carry source 'plugin'.
 				execute: (commandId, input) =>
 					commands.execute("plugin", id, commandId, input),
+				// §16.1/§16.3 — grant-agnostic, same data as the instance door.
+				observe: (cb) => track(commands.observe(cb)),
 			},
 			events: {
 				emit: (name, payload) => events.emit(id, name, payload),
@@ -291,6 +347,8 @@ export function createKernel(options: KernelOptions): Kernel {
 				get: (name) => services.get(id, name),
 				tryGet: (name) => services.tryGet(id, name),
 			},
+			// §16.2/§16.3 — the same list the instance door serves.
+			plugins: { list: listPlugins },
 			// §13.5: the gate is decided from the manifest's exact grant —
 			// unknown permission strings grant nothing (§12.2).
 			storage: createStorageArea(
@@ -321,7 +379,39 @@ export function createKernel(options: KernelOptions): Kernel {
 		};
 	}
 
+	// §18.2: the instance is a full host door — same names and semantics
+	// as PluginApi, acts attributed to the reserved `host` party (§7's
+	// EmitMeta.source, §6's Invocation.source). Host registrations are
+	// tracked like a plugin's, so dispose() reclaims them too. §2.4's
+	// reserved-namespace write guard applies to the host as well:
+	// `switchboard.*` is reserved for the kernel, and the host is not
+	// the kernel.
+	const hostDisposables = new DisposableStore();
 	return {
+		commands: {
+			register: (command) =>
+				hostDisposables.track(commands.register("host", command)),
+			execute: (id, input) => commands.execute("host", "host", id, input),
+			observe: (cb) => hostDisposables.track(commands.observe(cb)),
+		},
+		events: {
+			emit: (name, payload) => events.emit("host", name, payload),
+			on: (name, cb) => hostDisposables.track(events.on("host", name, cb)),
+		},
+		context: {
+			set: (key, value) => context.set("host", key, value),
+			get: (key) => context.get("host", key),
+			delete: (key) => context.delete("host", key),
+			observe: (key, cb) =>
+				hostDisposables.track(context.observe("host", key, cb)),
+		},
+		services: {
+			register: (name, service) =>
+				hostDisposables.track(services.register("host", name, service)),
+			get: (name) => services.get("host", name),
+			tryGet: (name) => services.tryGet("host", name),
+		},
+		plugins: { list: listPlugins },
 		diagnostics: { subscribe: (cb) => hub.subscribe(cb) },
 		ready,
 		// §4.3: deactivation disposes everything the kernel can see, in
@@ -330,6 +420,7 @@ export function createKernel(options: KernelOptions): Kernel {
 			for (const plugin of [...installed.values()].reverse()) {
 				plugin.disposables.dispose();
 			}
+			hostDisposables.dispose();
 			installed.clear();
 		},
 	};

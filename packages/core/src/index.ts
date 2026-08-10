@@ -1,9 +1,8 @@
 // @switchboard-dev/core — the Switchboard kernel.
-// Public surface of the §2–§9 build slices; the construction surface
-// (`createSwitchboard`, kernel spec §18) lands with the host-surface slice.
 
 export type {
 	CommandDefinition,
+	CommandRecord,
 	CommandsApi,
 	ContextView,
 	Invocation,
@@ -19,8 +18,18 @@ export type { Disposable } from "./disposable";
 export type { SwitchboardErrorInit, ValidationIssue } from "./errors";
 export { SwitchboardError } from "./errors";
 export type { EmitMeta, EventsApi } from "./events";
-export type { DiagnosticsApi, PluginApi, PluginDefinition } from "./plugin";
+export type { KernelHandoff } from "./handoff";
+export type { Switchboard, SwitchboardOptions } from "./kernel";
+export type {
+	DiagnosticsApi,
+	PluginApi,
+	PluginDefinition,
+	PluginRecord,
+	PluginStatus,
+	PluginsApi,
+} from "./plugin";
 export { definePlugin } from "./plugin";
 export type { ServicesApi } from "./services";
 export type { StorageArea, StorageEngine } from "./storage";
 export { localStorageEngine, memoryEngine } from "./storage";
+export { createSwitchboard } from "./switchboard";

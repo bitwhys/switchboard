@@ -3,8 +3,10 @@
 // dispatch runs `validate` pre-dispatch (§6.3) and wraps handler
 // failures with the command id (§6.1). Schemas and annotations are
 // carried verbatim — the kernel depends on no schema library (§6.2)
-// and never deep-inspects payloads (§14).
+// and never deep-inspects payloads (§14). Also home to §11's
+// tracked-read `when` evaluation and §16.1's registry observation.
 
+import type { ContextStore } from "./context";
 import type { DiagnosticsHub } from "./diagnostics";
 import type { Disposable } from "./disposable";
 import { guardName, guardReservedWrite, loud } from "./guards";
@@ -36,15 +38,33 @@ export interface CommandDefinition {
 	outputSchema?: object;
 	validate?: StandardSchemaValidate;
 	annotations?: object;
-	/** §11 — visibility predicate; evaluation machinery lands with the §10–§12 slice. */
+	/** §11 — visibility predicate: gates listing, never dispatch (§11.2). */
 	when?: (ctx: ContextView) => boolean;
 	execute(input: object, invocation: Invocation): unknown | Promise<unknown>;
 }
 
-/** Kernel spec §6 — the per-plugin commands surface (observe: §16.1, later slice). */
+/** Kernel spec §16.1 — one command as observers see it: data fields only. */
+export interface CommandRecord {
+	id: string;
+	title: string;
+	description?: string;
+	/** Carried verbatim (§6.2). */
+	inputSchema?: object;
+	outputSchema?: object;
+	/** Carried verbatim (§6.4). */
+	annotations?: object;
+	/** Owning plugin id (`host` for instance-door registrations, §18.2). */
+	pluginId: string;
+	/** Current `when` state (§11): false = when-hidden. */
+	listed: boolean;
+}
+
+/** Kernel spec §6 — the per-plugin commands surface. */
 export interface CommandsApi {
 	register(command: CommandDefinition): Disposable;
 	execute(id: string, input?: object): Promise<unknown>;
+	/** §16.1 — full-array snapshots, synchronous replay on subscribe. */
+	observe(cb: (commands: CommandRecord[]) => void): Disposable;
 }
 
 export interface CommandRegistry {
@@ -55,15 +75,98 @@ export interface CommandRegistry {
 		id: string,
 		input?: object,
 	): Promise<unknown>;
+	observe(cb: (commands: CommandRecord[]) => void): Disposable;
 }
 
 interface RegisteredCommand {
 	definition: CommandDefinition;
 	owner: string;
+	/** §11 — current `when` state; when-less commands are always listed. */
+	listed: boolean;
+	/** §11.1 — the keys the last evaluation actually read; re-tracked every run. */
+	deps: Set<string>;
 }
 
-export function createCommandRegistry(hub: DiagnosticsHub): CommandRegistry {
+export function createCommandRegistry(
+	hub: DiagnosticsHub,
+	context: ContextStore,
+): CommandRegistry {
 	const commands = new Map<string, RegisteredCommand>();
+	const observers = new Set<(records: CommandRecord[]) => void>();
+
+	// §16.1: snapshots, never deltas — a fresh full array in registration
+	// order; schemas and annotations ride verbatim, behavior never does.
+	function snapshot(): CommandRecord[] {
+		return [...commands.values()].map((entry) => ({
+			id: entry.definition.id,
+			title: entry.definition.title,
+			description: entry.definition.description,
+			inputSchema: entry.definition.inputSchema,
+			outputSchema: entry.definition.outputSchema,
+			annotations: entry.definition.annotations,
+			pluginId: entry.owner,
+			listed: entry.listed,
+		}));
+	}
+
+	function fire(): void {
+		if (observers.size === 0) return;
+		const records = snapshot();
+		for (const cb of [...observers]) {
+			try {
+				cb(records);
+			} catch {
+				// same containment as context.observe (§8.1's replay posture)
+			}
+		}
+	}
+
+	// §11.1: run the predicate over a tracked-read view — the keys it
+	// actually reads become its dependency set, re-tracked on every run.
+	// A throwing predicate violates §11.1's purity MUST: contained, the
+	// evaluation counts as false, and a dev-mode warning (`when-failed`)
+	// says so.
+	function evaluate(entry: RegisteredCommand): boolean {
+		const when = entry.definition.when;
+		if (!when) return true;
+		const reads = new Set<string>();
+		const view: ContextView = {
+			get(key) {
+				reads.add(key);
+				return context.peek(key);
+			},
+		};
+		try {
+			return when(view) === true;
+		} catch (cause) {
+			hub.emit({
+				severity: "warning",
+				code: "when-failed",
+				source: "kernel",
+				plugin: entry.owner,
+				subject: entry.definition.id,
+				message: `\`when\` for ${JSON.stringify(entry.definition.id)} threw (${cause instanceof Error ? cause.message : String(cause)}) — predicates must be pure; treating as not listed (§11.1)`,
+			});
+			return false;
+		} finally {
+			entry.deps = reads;
+		}
+	}
+
+	// §11.1: re-evaluate only commands whose last run actually read the
+	// changed key; §16.1: observers fire iff a re-evaluation flips `listed`.
+	context.onChange((key) => {
+		let flipped = false;
+		for (const entry of commands.values()) {
+			if (!entry.definition.when || !entry.deps.has(key)) continue;
+			const listed = evaluate(entry);
+			if (listed !== entry.listed) {
+				entry.listed = listed;
+				flipped = true;
+			}
+		}
+		if (flipped) fire();
+	});
 
 	return {
 		register(owner, command) {
@@ -80,8 +183,22 @@ export function createCommandRegistry(hub: DiagnosticsHub): CommandRegistry {
 					message: `command id ${JSON.stringify(id)} is already registered by ${commands.get(id)?.owner} (§2.2)`,
 				});
 			}
-			commands.set(id, { definition: command, owner });
-			return { dispose: () => commands.delete(id) };
+			const entry: RegisteredCommand = {
+				definition: command,
+				owner,
+				listed: true,
+				deps: new Set(),
+			};
+			// §11: the initial `when` evaluation happens at registration, so
+			// the record enters the feed with its real `listed` state.
+			entry.listed = evaluate(entry);
+			commands.set(id, entry);
+			fire();
+			return {
+				dispose: () => {
+					if (commands.delete(id)) fire();
+				},
+			};
 		},
 
 		// async so every failure is a rejection at the call site (§2.1 of the
@@ -135,6 +252,18 @@ export function createCommandRegistry(hub: DiagnosticsHub): CommandRegistry {
 					cause,
 				});
 			}
+		},
+
+		// §16.1: synchronous replay of the complete current array, then a
+		// fresh full array on every registration, disposal, and when flip.
+		observe(cb) {
+			observers.add(cb);
+			try {
+				cb(snapshot());
+			} catch {
+				// same containment as live notification
+			}
+			return { dispose: () => observers.delete(cb) };
 		},
 	};
 }
