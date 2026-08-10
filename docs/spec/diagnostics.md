@@ -95,6 +95,7 @@ A `code` is a single lowercase kebab segment (`[a-z0-9-]+`), compared exactly. T
 | `name-taken` | error | an exclusive name is already registered | [kernel §2.2](./kernel-api.md#22-name-kinds), [§9](./kernel-api.md#9-services) |
 | `reserved-namespace` | error | a plugin registration under `switchboard.*`, or a reserved plugin id (§4.1) | [kernel §2.4](./kernel-api.md#24-prefixes-and-the-reserved-namespace) |
 | `invalid-manifest` | error | a malformed manifest, including malformed permission and activation strings | [kernel §3.3](./kernel-api.md#33-manifest-validation), [§12.1](./kernel-api.md#121-grammar) |
+| `invalid-options` | error | structurally unusable `createSwitchboard` options; thrown before any channel exists, so this code never appears as a channel entry | [kernel §18.3](./kernel-api.md#183-failure-envelope) |
 | `duplicate-provider` | error | a second installed plugin provides an already-provided capability | [kernel §10.2](./kernel-api.md#102-single-provider) |
 | `capability-unsatisfied` | error | a `requires` entry unsatisfied at the activation check | [kernel §10.3](./kernel-api.md#103-the-check) |
 | `setup-failed` | error | a plugin's `setup` threw or rejected | [kernel §4.2](./kernel-api.md#42-activation) |
@@ -138,7 +139,7 @@ Delivery MUST reach every current subscriber; a throwing subscriber MUST NOT pre
 
 ### 6.1 The host surface
 
-The kernel instance returned by `createSwitchboard` exposes the channel (the instance's full shape is out of scope here):
+The kernel instance returned by `createSwitchboard` exposes the channel (the instance's full shape: [kernel spec §18.2](./kernel-api.md#182-the-instance)):
 
 ```ts
 interface DiagnosticsChannel {
