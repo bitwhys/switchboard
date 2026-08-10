@@ -22,3 +22,5 @@ export type { EmitMeta, EventsApi } from "./events";
 export type { DiagnosticsApi, PluginApi, PluginDefinition } from "./plugin";
 export { definePlugin } from "./plugin";
 export type { ServicesApi } from "./services";
+export type { StorageArea, StorageEngine } from "./storage";
+export { localStorageEngine, memoryEngine } from "./storage";

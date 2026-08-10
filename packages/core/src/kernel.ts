@@ -1,7 +1,7 @@
 // Kernel spec §4 — installation, activation, and teardown — and §5's
 // PluginApi wiring over the four primitives (§6–§9). This internal
-// factory grows into `createSwitchboard` (§18) as later slices land
-// storage, the capability check, and the handoff.
+// factory grows into `createSwitchboard` (§18) when the host-surface
+// slice lands the handoff and the remaining §16 surfaces.
 
 import satisfies from "semver/functions/satisfies.js";
 import { type CommandRegistry, createCommandRegistry } from "./commands";
@@ -14,9 +14,17 @@ import { validateManifest } from "./manifest";
 import { splitCapability } from "./names";
 import type { PluginApi, PluginDefinition } from "./plugin";
 import { createServiceRegistry, type ServiceRegistry } from "./services";
+import {
+	createStorageArea,
+	isStorageEngine,
+	localStorageEngine,
+	type StorageEngine,
+} from "./storage";
 
 export interface KernelOptions {
 	plugins: PluginDefinition[];
+	/** §13.3 — one engine per kernel instance; default `localStorageEngine`. */
+	storage?: StorageEngine;
 	/** Diagnostics spec §7 — default on. */
 	dev?: boolean;
 	/** Diagnostics spec §6.3 — console reporter switch. */
@@ -53,6 +61,15 @@ export function createKernel(options: KernelOptions): Kernel {
 			message: "createSwitchboard requires a `plugins` array (§18.1)",
 		});
 	}
+	if (options.storage !== undefined && !isStorageEngine(options.storage)) {
+		throw new SwitchboardError({
+			code: "invalid-options",
+			source: "kernel",
+			message: "the `storage` option must be a storage engine (§13.3, §18.3)",
+		});
+	}
+	// §13.3: one engine per kernel instance, default localStorageEngine.
+	const storage = options.storage ?? localStorageEngine();
 
 	const dev = options.dev !== false;
 	const hub = createDiagnosticsHub({
@@ -274,6 +291,14 @@ export function createKernel(options: KernelOptions): Kernel {
 				get: (name) => services.get(id, name),
 				tryGet: (name) => services.tryGet(id, name),
 			},
+			// §13.5: the gate is decided from the manifest's exact grant —
+			// unknown permission strings grant nothing (§12.2).
+			storage: createStorageArea(
+				id,
+				storage,
+				(plugin.definition.permissions ?? []).includes("storage:use"),
+				hub,
+			),
 			diagnostics: {
 				// Diagnostics §6.2: emission half only — never throws; `source`
 				// is stamped with the calling plugin's id, unconditionally (§4.1).
