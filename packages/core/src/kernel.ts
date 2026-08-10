@@ -3,6 +3,7 @@
 // factory grows into `createSwitchboard` (§18) as later slices land
 // storage, the capability check, and the handoff.
 
+import satisfies from "semver/functions/satisfies.js";
 import { type CommandRegistry, createCommandRegistry } from "./commands";
 import { type ContextStore, createContextStore } from "./context";
 import { createDiagnosticsHub, type DiagnosticsChannel } from "./diagnostics";
@@ -10,6 +11,7 @@ import { DisposableStore } from "./disposable";
 import { SwitchboardError } from "./errors";
 import { createEventBus, type EventBus } from "./events";
 import { validateManifest } from "./manifest";
+import { splitCapability } from "./names";
 import type { PluginApi, PluginDefinition } from "./plugin";
 import { createServiceRegistry, type ServiceRegistry } from "./services";
 
@@ -58,17 +60,18 @@ export function createKernel(options: KernelOptions): Kernel {
 		console: options.diagnostics?.console !== false,
 	});
 	const installed = new Map<string, InstalledPlugin>();
-	// §10.1: capability name → providing plugin id, from validated manifests.
-	// Built before any setup runs so §9's rejection rules see plugins later
-	// in the activation order (get is activation-order-insensitive). First
-	// provider wins here; the §10.2 duplicate-provider error is a later slice.
-	const providers = new Map<string, string>();
+	// §10.1/§10.2: capability name → its one installed provider (with the
+	// declared version, for §10.3's satisfies check and near-miss messages).
+	// Built before any setup runs so §9's rejection rules and §10.3's check
+	// see plugins later in the activation order. §10.2 keeps it single: a
+	// colliding plugin is blocked at install and indexes nothing.
+	const providers = new Map<string, { plugin: string; version?: string }>();
 
 	const commands: CommandRegistry = createCommandRegistry(hub);
 	const events: EventBus = createEventBus(hub);
 	const context: ContextStore = createContextStore(hub);
 	const services: ServiceRegistry = createServiceRegistry(hub, {
-		providerOf: (name) => providers.get(name),
+		providerOf: (name) => providers.get(name)?.plugin,
 		failureOf: (pluginId) => installed.get(pluginId)?.failure,
 	});
 
@@ -106,6 +109,36 @@ export function createKernel(options: KernelOptions): Kernel {
 				});
 				continue;
 			}
+			// §10.2: at most one installed plugin may provide a capability name.
+			// A collision — with an already-installed plugin or within this
+			// manifest — blocks this plugin at install: none of its provides
+			// index, so they satisfy no check and reject service gets (§9).
+			const provides = (result.manifest.provides ?? []).map((entry) => {
+				const parts = splitCapability(entry);
+				// unreachable when undefined: §3.3 validated the grammar above
+				return parts ?? { name: entry };
+			});
+			const own = new Set<string>();
+			let collision: { name: string } | undefined;
+			for (const p of provides) {
+				if (providers.has(p.name) || own.has(p.name)) {
+					collision = p;
+					break;
+				}
+				own.add(p.name);
+			}
+			if (collision) {
+				const holder = providers.get(collision.name)?.plugin ?? id;
+				hub.emit({
+					severity: "error",
+					code: "duplicate-provider",
+					source: "kernel",
+					plugin: id,
+					subject: collision.name,
+					message: `${id} provides ${JSON.stringify(collision.name)}, already provided by ${holder} — at most one installed provider (§10.2)`,
+				});
+				continue;
+			}
 			for (const w of result.warnings) {
 				hub.emit({
 					severity: "warning",
@@ -121,17 +154,35 @@ export function createKernel(options: KernelOptions): Kernel {
 				status: "pending",
 				disposables: new DisposableStore(),
 			});
-			for (const entry of result.manifest.provides ?? []) {
-				const at = entry.indexOf("@");
-				const name = at === -1 ? entry : entry.slice(0, at);
-				if (!providers.has(name)) providers.set(name, id);
+			for (const p of provides) {
+				providers.set(p.name, { plugin: id, version: p.version });
 			}
 		}
 
 		// Phase 2 — activate in array order (§4.2: never reordered, each
-		// setup awaited; the §10.3 capability check lands with §10–§12).
+		// setup awaited).
 		for (const plugin of installed.values()) {
 			const id = plugin.definition.id;
+			// §10.3: the capability check — once per plugin, before its setup,
+			// against installed (not activated) plugins. Failure blocks this
+			// plugin only; there is no runtime re-check after activation.
+			const unsatisfied = checkRequires(id, plugin.definition.requires);
+			if (unsatisfied.length > 0) {
+				plugin.status = "failed";
+				plugin.failure = unsatisfied[0];
+				services.onPluginFailed(id, unsatisfied[0]);
+				for (const error of unsatisfied) {
+					hub.emit({
+						severity: "error",
+						code: error.code,
+						source: error.source,
+						plugin: error.plugin,
+						subject: error.subject,
+						message: error.message,
+					});
+				}
+				continue;
+			}
 			try {
 				await plugin.definition.setup(createPluginApi(id, plugin));
 				plugin.status = "active";
@@ -150,6 +201,50 @@ export function createKernel(options: KernelOptions): Kernel {
 			}
 		}
 	})();
+
+	// §10.3: one error per unsatisfied `requires` entry, each naming the
+	// requiring plugin, the required string, and the near-miss with versions
+	// (single provider, §10.2, so there is at most one near-miss per name).
+	function checkRequires(
+		id: string,
+		requires: string[] | undefined,
+	): SwitchboardError[] {
+		const errors: SwitchboardError[] = [];
+		for (const entry of requires ?? []) {
+			const parts = splitCapability(entry);
+			if (!parts) continue; // §3.3 already rejected malformed entries
+			const provider = providers.get(parts.name);
+			let nearMiss: string | undefined;
+			if (provider) {
+				const range = parts.version;
+				if (range === undefined) continue; // bare name: any version (§10.1)
+				if (
+					provider.version !== undefined &&
+					satisfies(provider.version, range)
+				) {
+					continue;
+				}
+				nearMiss =
+					provider.version === undefined
+						? `\`${provider.plugin}\` provides \`${parts.name}\` (no version declared, range cannot be checked)`
+						: `\`${provider.plugin}\` provides \`${parts.name}@${provider.version}\` (range not satisfied)`;
+			}
+			errors.push(
+				new SwitchboardError({
+					code: "capability-unsatisfied",
+					source: "kernel",
+					plugin: id,
+					subject: entry,
+					message: `\`${id}\` requires \`${entry}\`; ${
+						nearMiss
+							? `${nearMiss}; no other providers installed`
+							: "no provider installed"
+					} (§10.3)`,
+				}),
+			);
+		}
+		return errors;
+	}
 
 	function createPluginApi(id: string, plugin: InstalledPlugin): PluginApi {
 		// §4.3: every registration Disposable the kernel hands out is also

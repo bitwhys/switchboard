@@ -25,9 +25,13 @@
 		"test": "vitest run"
 	},
 	"devDependencies": {
+		"@types/semver": "^7.8.0",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"unrun": "catalog:",
 		"vitest": "catalog:"
+	},
+	"dependencies": {
+		"semver": "^7.8.5"
 	}
 }
