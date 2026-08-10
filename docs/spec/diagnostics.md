@@ -101,6 +101,7 @@ A `code` is a single lowercase kebab segment (`[a-z0-9-]+`), compared exactly. T
 | `setup-failed` | error | a plugin's `setup` threw or rejected | [kernel §4.2](./kernel-api.md#42-activation) |
 | `service-unavailable` | error | `services.get` for a name whose capability no installed plugin provides | [kernel §9](./kernel-api.md#9-services) |
 | `invalid-input` | error | a command's `validate` returned issues; dispatch refused | [kernel §6.3](./kernel-api.md#63-validation) |
+| `command-not-found` | error | `commands.execute` for an id no command is registered under | [kernel §6.1](./kernel-api.md#61-registration-and-dispatch) |
 | `command-failed` | error | a command handler threw; wrapped with the command id | [kernel §6.1](./kernel-api.md#61-registration-and-dispatch) |
 | `permission-denied` | error | a call gated by an enforced permission the plugin does not hold (v1: `storage:use`) | [kernel §13.5](./kernel-api.md#135-permission-storageuse) |
 | `unknown-manifest-field` | warning | an unknown manifest field, tolerated | [kernel §3.3](./kernel-api.md#33-manifest-validation) |

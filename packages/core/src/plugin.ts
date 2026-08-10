@@ -1,7 +1,11 @@
 // Kernel spec §3 — plugin definition.
 
+import type { CommandsApi } from "./commands";
+import type { ContextApi } from "./context";
 import type { Diagnostic, DiagnosticSeverity } from "./diagnostics";
 import type { Disposable } from "./disposable";
+import type { EventsApi } from "./events";
+import type { ServicesApi } from "./services";
 
 /** Kernel spec §3.1 — the single definition object: static manifest + entry point. */
 export interface PluginDefinition {
@@ -30,11 +34,15 @@ export interface DiagnosticsApi {
 }
 
 /**
- * Kernel spec §5 — the plugin's only door into the kernel. This slice
- * carries kernel infrastructure only; the four primitive APIs land with
- * their own build slices (§6–§9) and `storage` with §13.
+ * Kernel spec §5 — the plugin's only door into the kernel, grouped by
+ * primitive plus kernel infrastructure. Still to land: `plugins`
+ * (§16.2, host-surface slice) and `storage` (§13 slice).
  */
 export interface PluginApi {
+	commands: CommandsApi;
+	events: EventsApi;
+	context: ContextApi;
+	services: ServicesApi;
 	diagnostics: DiagnosticsApi;
 	onDispose(fn: () => void): void;
 }
