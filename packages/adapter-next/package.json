@@ -2,6 +2,25 @@
 	"name": "@switchboard-dev/adapter-next",
 	"version": "0.0.0",
 	"description": "Next.js adapter: mounts Switchboard and the bridge MCP edge in a Next.js app.",
+	"keywords": [
+		"switchboard",
+		"devtools",
+		"developer-tools",
+		"nextjs",
+		"next",
+		"mcp",
+		"ai-agents"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/bitwhys/switchboard#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitwhys/switchboard.git",
+		"directory": "packages/adapter-next"
+	},
+	"bugs": {
+		"url": "https://github.com/bitwhys/switchboard/issues"
+	},
 	"type": "module",
 	"engines": {
 		"node": ">=20.19"

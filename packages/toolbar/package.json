@@ -2,6 +2,24 @@
 	"name": "@switchboard-dev/toolbar",
 	"version": "0.0.0",
 	"description": "Reference provider of the toolbar@1.0.0 capability: items, badges, panels, mount contract.",
+	"keywords": [
+		"switchboard",
+		"devtools",
+		"developer-tools",
+		"toolbar",
+		"plugin",
+		"accessibility"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/bitwhys/switchboard#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitwhys/switchboard.git",
+		"directory": "packages/toolbar"
+	},
+	"bugs": {
+		"url": "https://github.com/bitwhys/switchboard/issues"
+	},
 	"type": "module",
 	"engines": {
 		"node": ">=20.19"

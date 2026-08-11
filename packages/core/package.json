@@ -2,6 +2,25 @@
 	"name": "@switchboard-dev/core",
 	"version": "0.0.0",
 	"description": "Switchboard kernel: plugin definition, activation, the four primitives, capabilities, permissions, storage.",
+	"keywords": [
+		"switchboard",
+		"devtools",
+		"developer-tools",
+		"plugin-system",
+		"kernel",
+		"mcp",
+		"ai-agents"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/bitwhys/switchboard#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitwhys/switchboard.git",
+		"directory": "packages/core"
+	},
+	"bugs": {
+		"url": "https://github.com/bitwhys/switchboard/issues"
+	},
 	"type": "module",
 	"engines": {
 		"node": ">=20.19"
@@ -24,14 +43,14 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run"
 	},
+	"dependencies": {
+		"semver": "^7.8.5"
+	},
 	"devDependencies": {
 		"@types/semver": "^7.8.0",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"unrun": "catalog:",
 		"vitest": "catalog:"
-	},
-	"dependencies": {
-		"semver": "^7.8.5"
 	}
 }

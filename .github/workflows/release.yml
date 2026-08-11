@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+# One release at a time: two overlapping runs would race on the version PR
+# branch. Never cancel — a cancelled run can leave packages half-published.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write # push the release commit and tags, cut GitHub Releases
+  pull-requests: write # open and refresh the version PR
+  id-token: write # npm provenance attestation
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # Same reasoning as CI: pnpm 11 needs Node >=22.13, so use the
+          # standalone binary that bundles its own Node.
+          standalone: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # While changesets are pending this only maintains the version PR. Once
+      # that PR merges and no changesets remain, the publish script runs:
+      # `pnpm release` builds every package, then `changeset publish` pushes
+      # the tarballs, tags each package and cuts a GitHub Release per package.
+      #
+      # NPM_TOKEN does not exist as a secret yet — it is minted on release day
+      # (see issue #30). Until then an accidental merge of the version PR fails
+      # loudly at the publish step instead of publishing something unfinished.
+      #
+      # Pinned to v1 on purpose: action v2 requires Changesets CLI v3 and drops
+      # its NPM_TOKEN handling in favour of trusted publishing — which cannot
+      # create brand-new packages, so it cannot do the 0.1.0 publish (#30).
+      # Upgrade both together once 0.1.0 exists and trusted publishers are wired.
+      - uses: changesets/action@v1
+        with:
+          version: pnpm changeset version
+          publish: pnpm release
+          commit: "chore: version packages"
+          title: "chore: version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          # changesets shells out to `pnpm publish`, which has no --provenance
+          # passthrough, so provenance is turned on through npm config.
+          NPM_CONFIG_PROVENANCE: true

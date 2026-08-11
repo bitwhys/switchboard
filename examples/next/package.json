@@ -3,6 +3,7 @@
 	"private": true,
 	"version": "0.0.0",
 	"description": "Example Next.js app wired with the four reference plugins.",
+	"license": "MIT",
 	"type": "module",
 	"dependencies": {
 		"@switchboard-dev/adapter-next": "workspace:^",

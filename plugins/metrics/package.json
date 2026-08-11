@@ -2,6 +2,25 @@
 	"name": "@switchboard-dev/plugin-metrics",
 	"version": "0.0.0",
 	"description": "Reference plugin: headless Web Vitals telemetry (pure producer, built-ins only).",
+	"keywords": [
+		"switchboard",
+		"devtools",
+		"developer-tools",
+		"switchboard-plugin",
+		"web-vitals",
+		"performance",
+		"metrics"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/bitwhys/switchboard#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitwhys/switchboard.git",
+		"directory": "plugins/metrics"
+	},
+	"bugs": {
+		"url": "https://github.com/bitwhys/switchboard/issues"
+	},
 	"type": "module",
 	"engines": {
 		"node": ">=20.19"
