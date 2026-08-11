@@ -1,6 +1,6 @@
 # Topology
 
-This file covers where Switchboard runs: the three execution environments, the two paths into the bridge, the process and security boundaries, and multi-tab behavior. It does not cover what travels over those paths — that is [`bridge-flows.md`](./bridge-flows.md) — or who is allowed to see it, which is [`exposure-model.md`](./exposure-model.md). Source of truth: [bridge §1](../spec/bridge-protocol.md#1-scope-and-topology), [§15](../spec/bridge-protocol.md#15-security-posture-auth-v1), [adapter contract §2](../spec/adapter-contract.md#2-topology-the-two-doors).
+This file covers where Switchboard runs: the three execution environments, the two paths into the bridge, the process and security boundaries, and multi-tab behavior. It does not cover what travels over those paths — that is [`bridge-flows.md`](./bridge-flows.md) — or who is allowed to see it, which is [`exposure-model.md`](./exposure-model.md). Source of truth: [bridge §1](../spec/bridge-protocol.md#1-scope-and-topology), [§15](../spec/bridge-protocol.md#15-security-model-auth-v1), [adapter contract §2](../spec/adapter-contract.md#2-topology-the-two-paths).
 
 ## The three execution environments
 
@@ -20,15 +20,15 @@ flowchart LR
   end
   subgraph page["Page — one browser tab"]
     BOOT["bootstrap<br/>(adapter-injected)"]
-    WIRE["page client<br/>(bridge-mcp, browser export)"]
+    PAGECLIENT["page client<br/>(bridge-mcp, browser export)"]
     KERNEL["kernel (core)<br/>the four registries"]
     PLUGINS["plugins<br/>(including the toolbar)"]
-    BOOT -->|"attaches"| WIRE
-    WIRE -->|"observes via the handoff"| KERNEL
+    BOOT -->|"attaches"| PAGECLIENT
+    PAGECLIENT -->|"observes via the handoff"| KERNEL
     PLUGINS -->|"PluginApi"| KERNEL
   end
   AGENT -->|"path 1: MCP over<br/>Streamable HTTP"| EDGE
-  WIRE <-->|"path 2: the Switchboard<br/>protocol"| ADAPTER
+  PAGECLIENT <-->|"path 2: the Switchboard<br/>protocol"| ADAPTER
 ```
 
 What runs where:
@@ -45,7 +45,7 @@ There is no fourth environment. The kernel is client-only, and SSR does not crea
 
 The bridge translates between two protocols ([bridge §1](../spec/bridge-protocol.md#1-scope-and-topology)):
 
-- **The agent path uses MCP** over Streamable HTTP. By default that is `http://localhost:7654/mcp`, on the dedicated bridge port rather than the app port ([adapter contract §2.1](../spec/adapter-contract.md#21-the-mcp-door-lives-on-the-bridge-port))
+- **The agent path uses MCP** over Streamable HTTP. By default that is `http://localhost:7654/mcp`, on the dedicated bridge port rather than the app port ([adapter contract §2.1](../spec/adapter-contract.md#21-the-agent-path-lives-on-the-bridge-port))
 - **The page path uses the Switchboard protocol** — a small envelope of typed JSON messages, not MCP and not JSON-RPC
 
 The page path is deliberately not MCP. Keeping the two protocols apart stops agent messages leaking into the page layer.
@@ -69,7 +69,7 @@ The Switchboard protocol does not care which channel carries it. A channel must 
 
 The page side of the Switchboard protocol is implemented once, by the page client — the browser-only export from `bridge-mcp`. Adapters inject it and hand it a live, single-use connection handle.
 
-Everything in the dev-server process is per-process and in memory: one bridge, one canonical registry, and one session map per dev-server process ([adapter contract §2](../spec/adapter-contract.md#2-topology-the-two-doors)).
+Everything in the dev-server process is per-process and in memory: one bridge, one canonical registry, and one session map per dev-server process ([adapter contract §2](../spec/adapter-contract.md#2-topology-the-two-paths)).
 
 ## The security boundary
 

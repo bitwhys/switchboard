@@ -4,7 +4,7 @@
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
-*Consolidates (non-normative): the resolutions of tickets #14 (reference plugin briefs) and #13 (composition stress test, scenario 1).*
+*Background (not binding): the resolutions of tickets #14 (reference plugin briefs) and #13 (composition stress test, scenario 1).*
 
 ---
 
@@ -36,7 +36,7 @@ definePlugin({
 ```
 
 - **Hard requires**, both: without a toolbar or an inspector the plugin fails activation loudly ([kernel spec §10.3](../kernel-api.md#103-the-check)). The scanner is the suite's honest-hard-dependency case — a violations UI without a panel, or element-anchored violations without a registry, would be a lie.
-- The grant set is the **full bridge family** — all three `bridge:*` strings — plus both page-world advisories: `dom:read` for scanning, `dom:write` for the jump-to-element scroll/flash highlight.
+- The grant set is the **full bridge family** — all three `bridge:*` strings — plus both in-page advisories: `dom:read` for scanning, `dom:write` for the jump-to-element scroll/flash highlight.
 
 ## 3. Registered surface
 
@@ -45,13 +45,13 @@ definePlugin({
 | Kind | Name | Notes |
 |---|---|---|
 | Command | `a11y.scan` | optional ElementReference input scoping the scan; annotated read-only ([kernel spec §6.4](../kernel-api.md#64-annotations)) |
-| Context | `a11y.violations` | whole value per scan: violations carrying ElementReference envelopes minted via the inspector, plus rule id, impact, and help text — all wire-legal |
+| Context | `a11y.violations` | whole value per scan: violations carrying ElementReference envelopes minted via the inspector, plus rule id, impact, and help text — all plain JSON |
 | Context | `a11y.violation-count` | current violation count; feeds the strip badge (§4) |
 | Event | `a11y.scan-completed` | summary only (counts, scope) |
 
 - `a11y.scan` taking an **ElementReference as command input** is the round-trip direction nothing else in the suite exercises: agent obtains a reference (e.g. via the picker), hands it back, the scanner resolves it in-page through the inspector service.
 - `a11y.violation-count` exists because the badge value mapping requires a number or boolean ([toolbar contract §4.3](../toolbar-contract.md#43-badges)); it is derived from `a11y.violations` and written in the same breath.
-- `a11y.scan-completed` is the **loose-coupling seam**: downstream plugins observe it without any dependency on the scanner (the feedback plugin drafts annotations from it — [`feedback.md`](./feedback.md) §6), and it is tail-buffer-visible ([bridge spec §9.2](../bridge-protocol.md#92-the-tail-buffer)) so agents notice scans they didn't trigger.
+- `a11y.scan-completed` is the **loose-coupling point**: downstream plugins observe it without any dependency on the scanner (the feedback plugin drafts annotations from it — [`feedback.md`](./feedback.md) §6), and it is tail-buffer-visible ([bridge spec §9.2](../bridge-protocol.md#92-the-tail-buffer)) so agents notice scans they didn't trigger.
 
 ## 4. Toolbar contribution
 

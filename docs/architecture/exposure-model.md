@@ -1,6 +1,6 @@
 # The exposure model
 
-This file covers who can see which plugin capabilities, and why: the `bridge:*` grants, the `when` predicate, and where each is enforced. It does not cover how those decisions travel to the agent — that is [`bridge-flows.md`](./bridge-flows.md). Source of truth: [bridge §3](../spec/bridge-protocol.md#3-bridge-grants-mechanics), [kernel §14](../spec/kernel-api.md#14-the-wire-legal-rule).
+This file covers who can see which plugin capabilities, and why: the `bridge:*` grants, the `when` predicate, and where each is enforced. It does not cover how those decisions travel to the agent — that is [`bridge-flows.md`](./bridge-flows.md). Source of truth: [bridge §3](../spec/bridge-protocol.md#3-bridge-grants-mechanics), [kernel §14](../spec/kernel-api.md#14-the-plain-json-rule).
 
 Getting this wrong in either direction is a real bug: too much exposed, or something hidden that an agent needed.
 
@@ -63,7 +63,7 @@ Event names and context keys are shared names, so the bridge cannot decide expos
 
 ## Everything that crosses must be plain JSON
 
-Command inputs and results, event payloads, and context values must all be plain JSON — values that survive a JSON round-trip unchanged ([kernel §14](../spec/kernel-api.md#14-the-wire-legal-rule)). The rule holds whether or not a `bridge:*` grant is present.
+Command inputs and results, event payloads, and context values must all be plain JSON — values that survive a JSON round-trip unchanged ([kernel §14](../spec/kernel-api.md#14-the-plain-json-rule)). The rule holds whether or not a `bridge:*` grant is present.
 
 ## The toolbar does not change exposure
 

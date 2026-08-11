@@ -1,6 +1,6 @@
 # The agent feedback loop
 
-This file covers the main walkthrough for the feedback plugin: the end-to-end human → agent → human loop. It does not redefine the models it uses — visibility is covered in [`exposure-model.md`](./exposure-model.md), and message transport in [`bridge-flows.md`](./bridge-flows.md). Source of truth: [feedback brief §8](../spec/plugins/feedback.md#8-flagship-success-criterion-the-agent-loop).
+This file covers the main walkthrough for the feedback plugin: the end-to-end human → agent → human loop. It does not redefine the models it uses — visibility is covered in [`exposure-model.md`](./exposure-model.md), and message transport in [`bridge-flows.md`](./bridge-flows.md). Source of truth: [feedback brief §8](../spec/plugins/feedback.md#8-the-main-success-criterion-the-agent-loop).
 
 ## The loop
 

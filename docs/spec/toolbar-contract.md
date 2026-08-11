@@ -1,14 +1,14 @@
 # Switchboard Toolbar Adapter Contract
 
-**Version: `toolbar@1.0.0`.** The `toolbar` capability's semver *is* this contract's version — it versions the placement vocabulary itself and is deliberately decoupled from any npm package version (§2.2).
+**Version: `toolbar@1.0.0`.** The `toolbar` capability's semver *is* this contract's version — it versions the placement API itself and is deliberately decoupled from any npm package version (§2.2).
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
-TypeScript signatures and typed-JSON shape blocks in this document are **normative**. Prose qualifies them; it does not override them.
+TypeScript signatures and typed-JSON shape blocks in this document are **binding**. Prose qualifies them; it does not override them.
 
-This document is the one normative home for the **panel-chrome accessibility pattern set P1–P8** (§8), including the labelled-landmark obligation the spike promoted into the contract. Cross-cutting rules owned elsewhere are cited by link, never paraphrased: the naming grammar, the permission vocabulary, and the wire-legal rule live in [`kernel-api.md`](./kernel-api.md); bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md); the words **loud** and **dev-mode warning** are defined in [`diagnostics.md`](./diagnostics.md). Related document: [`dom-inspector-contract.md`](./dom-inspector-contract.md) (the other capability-owned contract).
+This document is the one place that defines the **panel-chrome accessibility pattern set P1–P8** (§8), including the labelled-landmark obligation the spike promoted into the contract. Cross-cutting rules owned elsewhere are cited by link, never paraphrased: the naming grammar, the permission strings, and the plain-JSON rule live in [`kernel-api.md`](./kernel-api.md); bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md); the words **loud** and **dev-mode warning** are defined in [`diagnostics.md`](./diagnostics.md). Related document: [`dom-inspector-contract.md`](./dom-inspector-contract.md) (the other capability-owned contract).
 
-*Consolidates (non-normative): the resolutions of tickets #7 (toolbar placement vocabulary) and #10 (Shadow DOM panel chrome a11y spike), the Shadow DOM accessibility research ([`docs/shadow-dom-a11y-patterns.md`](../shadow-dom-a11y-patterns.md)), and the spike evidence ([`prototypes/shadow-panel-a11y/`](../../prototypes/shadow-panel-a11y/)).*
+*Background (not binding): the resolutions of tickets #7 (toolbar placement API) and #10 (Shadow DOM panel chrome a11y spike), the Shadow DOM accessibility research ([`docs/shadow-dom-a11y-patterns.md`](../shadow-dom-a11y-patterns.md)), and the spike evidence ([`prototypes/shadow-panel-a11y/`](../../prototypes/shadow-panel-a11y/)).*
 
 ---
 
@@ -19,11 +19,11 @@ This contract binds two parties:
 - **Adapters** — any plugin that `provides` the `toolbar` capability and registers the `toolbar` Service. The first-party toolbar package is one such adapter; it holds no special status under this contract.
 - **Contributors** — any plugin that consumes the `toolbar` Service to place items or panels.
 
-The kernel carries **no placement vocabulary**: there is no `api.toolbar.*` on `PluginApi`, no manifest field for toolbar contributions, and no toolbar import in `core`. Everything in this document flows through one Service (§3), so the vocabulary is structurally ignorable by applications that install no toolbar.
+The kernel carries **no placement API**: there is no `api.toolbar.*` on `PluginApi`, no manifest field for toolbar contributions, and no toolbar import in `core`. Everything in this document flows through one Service (§3), so the whole placement API is structurally ignorable by applications that install no toolbar.
 
-Out of scope here, by the one-normative-home rule: command semantics, `when`, capabilities, and Disposables ([`kernel-api.md`](./kernel-api.md)); agent exposure of commands ([`bridge-protocol.md`](./bridge-protocol.md)); element identity ([`dom-inspector-contract.md`](./dom-inspector-contract.md)).
+Out of scope here, because each is defined elsewhere: command semantics, `when`, capabilities, and Disposables ([`kernel-api.md`](./kernel-api.md)); agent exposure of commands ([`bridge-protocol.md`](./bridge-protocol.md)); element identity ([`dom-inspector-contract.md`](./dom-inspector-contract.md)).
 
-v1 trusts plugin code (kernel spec [§1](./kernel-api.md#1-scope)). Nothing in this contract is a security boundary; declared attribution (§4.1, §6.1) is a conformance rule for authors, not something an adapter can verify.
+v1 trusts plugin code (kernel spec [§1](./kernel-api.md#1-scope)). Nothing in this contract is a security boundary; declared attribution (§4.1, §6.1) is a rule for authors, not something an adapter can verify.
 
 *Consolidates: #7.*
 
@@ -39,7 +39,7 @@ The contract belongs to the capability **name**, not to any implementation: any 
 
 ### 2.2 Versioning
 
-The capability semver versions the placement vocabulary itself — the item and panel shapes (§4, §5), the mount contract (§5.2), the ordering semantics (§6), and the chrome obligations (§7–§8):
+The capability semver versions the placement API itself — the item and panel shapes (§4, §5), the mount contract (§5.2), the ordering semantics (§6), and the chrome obligations (§7–§8):
 
 - **Additive changes** — new optional fields (`slot`, `group`, `preferredSize`, a keep-alive hint, a plugin-facing close API; §10) — are **minor** version bumps.
 - **Breaking changes** are **major** version bumps, the same bump-on-breaking discipline as the bridge protocol.
@@ -48,18 +48,18 @@ There is no third version number, and the npm package version of any adapter is 
 
 ### 2.3 Consumption
 
-Two postures, mapping onto the kernel's two service-acquisition paths ([§9](./kernel-api.md#9-services)):
+Two approaches, mapping onto the kernel's two service-acquisition paths ([§9](./kernel-api.md#9-services)):
 
 - **Hard dependency** — the plugin cannot function without toolbar presence: declare `requires: ["toolbar@^1"]` and `await api.services.get('toolbar')`. Activation fails [loudly](./diagnostics.md#21-loud-errors) when no toolbar is installed.
 - **Soft dependency** — toolbar presence is preferred, not required: probe with `api.services.tryGet('toolbar')` and stay fully functional (headless-safe) when it returns `undefined`. No `requires` entry.
 
-A contributor SHOULD choose the soft posture unless toolbar presence is genuinely load-bearing.
+A contributor SHOULD choose the soft approach unless the toolbar is genuinely essential.
 
 ## 3. The toolbar service
 
 *Consolidates: #7.*
 
-The `toolbar` Service is the **only** door for placement.
+The `toolbar` Service is the **only** API for placement.
 
 ```ts
 interface ToolbarService {
@@ -72,7 +72,7 @@ Both calls return a `Disposable` ([§4.3](./kernel-api.md#43-teardown-disposable
 
 Malformed contributions — an item that is neither a command item nor a panel item, a panel with a missing `id`, `title`, or `mount`, an `id` violating the name grammar — MUST be rejected [loudly](./diagnostics.md#21-loud-errors) at registration, rejecting **that contribution only**.
 
-Unknown fields on items and panels MUST be tolerated: preserved, surfaced as a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), never an error — the same forward-compatibility posture as the kernel ([§15](./kernel-api.md#15-versioning-and-forward-compatibility)). The reserved field names in §4.4 MUST NOT be assigned adapter-specific meanings.
+Unknown fields on items and panels MUST be tolerated: preserved, surfaced as a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), never an error — the same forward-compatibility rule as the kernel ([§15](./kernel-api.md#15-versioning-and-forward-compatibility)). The reserved field names in §4.4 MUST NOT be assigned adapter-specific meanings.
 
 ## 4. Items
 
@@ -110,7 +110,7 @@ An item is `{ command }` **or** `{ panel }` — an object carrying both, or neit
 
 ### 4.1 Attribution
 
-`source` names the contributing plugin's id (plugin-id grammar, [§2.3](./kernel-api.md#23-plugin-ids)) and drives cluster placement (§6.1). It is declared, not verified — v1 trusts plugin code (§1); misattributing `source` is a conformance violation by the author. A plugin MUST set `source` to its own manifest `id`.
+`source` names the contributing plugin's id (plugin-id grammar, [§2.3](./kernel-api.md#23-plugin-ids)) and drives cluster placement (§6.1). It is declared, not verified — v1 trusts plugin code (§1); misattributing `source` violates this contract. A plugin MUST set `source` to its own manifest `id`.
 
 ### 4.2 Command items are presentation only
 
@@ -137,11 +137,11 @@ The current value selects the rendering:
 | a finite number > 0 | count (display formatting is adapter-defined, e.g. `99+`) |
 | anything else | none, with a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings) |
 
-The badge MUST fold into the item's accessible name (P7, §8.7). Context values are wire-legal by the kernel's unconditional rule ([§14](./kernel-api.md#14-the-wire-legal-rule)); the badge contract adds no constraint of its own.
+The badge MUST fold into the item's accessible name (P7, §8.7). Context values are plain JSON by the kernel's unconditional rule ([§14](./kernel-api.md#14-the-plain-json-rule)); the badge contract adds no constraint of its own.
 
 ### 4.4 Reserved fields
 
-`slot` and `group` are **reserved item field names**. No v1 semantics exist: the strip is the single, implicit region (§6) and cross-plugin grouping is deliberately unsayable (§6.3). When a real second region or grouping vocabulary arrives, these fields land as minor-version additive changes with absence meaning today's behavior. Adapters MUST NOT assign them other meanings in the interim.
+`slot` and `group` are **reserved item field names**. No v1 semantics exist: the strip is the single, implicit region (§6) and cross-plugin grouping is deliberately unsayable (§6.3). When a real second region or grouping scheme arrives, these fields land as minor-version additive changes with absence meaning today's behavior. Adapters MUST NOT assign them other meanings in the interim.
 
 `preferredSize` on panels is reserved on the same terms (§5.3).
 
@@ -167,7 +167,7 @@ A panel item (§4) whose `panel` id has no current registration is not rendered;
 
 ### 5.2 The mount contract
 
-The mount contract is the framework-agnostic seam between adapter and panel body: **DOM container in, Disposable out; mounted on open, disposed on close.**
+The mount contract is the framework-agnostic boundary between adapter and panel body: **DOM container in, Disposable out; mounted on open, disposed on close.**
 
 - **On open**, the adapter MUST call `mount(container)` with a container element that lives **inside the toolbar's single open shadow root** (P1, §8.1), so panel bodies share the chrome's style isolation. What boots inside the container — vanilla DOM, React, anything — is the plugin's business.
 - **On close**, the adapter MUST call the returned `dispose` (when one was returned) and then MUST **force-clear** the container, in that order. A throwing `dispose` MUST NOT prevent the clear.
@@ -177,7 +177,7 @@ Open/closed state belongs to the adapter (§7). The adapter MAY close a panel pr
 
 ### 5.3 Plugin obligations inside the container
 
-A plugin's world begins and ends at the container it is handed:
+A plugin may touch only the container it is handed:
 
 - It MUST NOT reach outside its container into chrome DOM or the host page's DOM (host-page access is the business of other permissions and capabilities, not the toolbar).
 - ARIA ID references within the panel body are tree-local and legal (the container is inside the chrome's shadow root); references from the body to chrome elements or host-page elements MUST NOT be created (P2, §8.2).
@@ -189,7 +189,7 @@ There is no toolbar-side messaging surface between panel bodies and anything els
 
 *Consolidates: #7.*
 
-The **strip** is the toolbar's single contributable region in v1, and it is **implicit** — no `slot` field exists (§4.4). System affordances (settings, collapse, the adapter's own controls) are adapter-owned and outside this contract's ordering rules.
+The **strip** is the toolbar's single contributable region in v1, and it is **implicit** — no `slot` field exists (§4.4). System controls (settings, collapse, the adapter's own controls) are adapter-owned and outside this contract's ordering rules.
 
 ### 6.1 Clusters
 
@@ -197,7 +197,7 @@ Items **cluster by contributing plugin** (`source`, §4.1): each plugin's items 
 
 **Cluster sequence is plugin activation order** — the same application-developer-owned array the kernel refuses to reorder ([§4.2](./kernel-api.md#42-activation)). Placement disputes between plugins resolve in the application developer's plugin array, not in published packages.
 
-*(Non-normative: an adapter typically derives this order from the order of each plugin's first contribution, which coincides with activation order for contributions made during `setup` — the normal case. An adapter observes kernel registration state through the kernel's public observation surface — [kernel spec §16](./kernel-api.md#16-registry-observation-and-the-plugin-list).)*
+*(Note: an adapter typically derives this order from the order of each plugin's first contribution, which coincides with activation order for contributions made during `setup` — the normal case. An adapter observes kernel registration state through the kernel's public observation surface — [kernel spec §16](./kernel-api.md#16-registry-observation-and-the-plugin-list).)*
 
 ### 6.2 Order within a cluster
 
@@ -214,25 +214,25 @@ Cross-plugin interleaving and relative positioning are **deliberately inexpressi
 **Panel chrome** is everything around a panel's body, and the adapter owns all of it:
 
 - the frame and its sizing and position,
-- the header — title, icon, close affordance,
+- the header — title, icon, close button,
 - open/closed state, including the toggle rendering of panel items (e.g. expanded state),
 - focus management: trap, initial focus, restore (§8.3, §8.6),
 - `<dialog>` / `inert` semantics (§8.3),
 - screen-reader announcements (§8.5).
 
-The plugin's world begins and ends at the container (§5.3). Deliberately absent from v1: plugin size hints (`preferredSize` reserved, §4.4) and any plugin-visible chrome API beyond `mount`.
+A plugin may touch only the container it is handed (§5.3). Deliberately absent from v1: plugin size hints (`preferredSize` reserved, §4.4) and any plugin-visible chrome API beyond `mount`.
 
 The chrome obligations in §8 bind **every** adapter, not just the first-party one: they are what "provides `toolbar@1`" promises, so accessibility is delivered by the shared chrome once, not re-solved per plugin.
 
-*(Non-normative: the first-party [`@switchboard-dev/ui`](../../packages/ui/) package ships headless plain-DOM factories for these chrome mechanisms, which adapters SHOULD build on. Conformance stays behavioral — an adapter meeting §7–§8 without `ui` is fully conformant.)*
+*(Note: the first-party [`@switchboard-dev/ui`](../../packages/ui/) package ships headless plain-DOM factories for these chrome mechanisms, which adapters SHOULD build on. What matters is behavior — an adapter meeting §7–§8 without `ui` is fully conformant.)*
 
 ## 8. Accessibility: the pattern set P1–P8
 
-This section is the one normative home for the panel-chrome accessibility patterns. They were locked by the Shadow DOM research ([`docs/shadow-dom-a11y-patterns.md`](../shadow-dom-a11y-patterns.md)) and validated end-to-end by the chrome spike ([`prototypes/shadow-panel-a11y/`](../../prototypes/shadow-panel-a11y/)): axe-core 4.10.3 reported 0 violations with panels closed and open — demonstrably auditing inside plugin-mounted containers — and a full VoiceOver walkthrough passed in Safari and Chrome with no extra configuration. NVDA and JAWS remain untested; P5's fallback region exists for exactly that reason.
+This section is the one place that defines the panel-chrome accessibility patterns. They were locked by the Shadow DOM research ([`docs/shadow-dom-a11y-patterns.md`](../shadow-dom-a11y-patterns.md)) and validated end-to-end by the chrome spike ([`prototypes/shadow-panel-a11y/`](../../prototypes/shadow-panel-a11y/)): axe-core 4.10.3 reported 0 violations with panels closed and open — demonstrably auditing inside plugin-mounted containers — and a full VoiceOver walkthrough passed in Safari and Chrome with no extra configuration. NVDA and JAWS remain untested; P5's fallback region exists for exactly that reason.
 
 *Consolidates: #10; evidence also #4.*
 
-*(Non-normative: [`@switchboard-dev/ui`](../../packages/ui/) implements the mechanism of each pattern below except P2, which is a rule honored by construction.)*
+*(Note: [`@switchboard-dev/ui`](../../packages/ui/) implements the mechanism of each pattern below except P2, which is a rule honored by construction.)*
 
 ### 8.1 P1 — one open shadow root
 
@@ -240,7 +240,7 @@ All chrome lives in a **single open shadow root**; plugin mount containers live 
 
 ### 8.2 P2 — every ARIA reference is tree-local
 
-Every ARIA IDREF (`aria-labelledby`, `aria-describedby`, `aria-controls`, …) MUST have both endpoints inside the chrome's shadow root. Nothing references across the host↔chrome seam, in either direction. Relationships between chrome and host-page elements are expressed as announcements (§8.5) or visual affordances, never as ARIA references.
+Every ARIA IDREF (`aria-labelledby`, `aria-describedby`, `aria-controls`, …) MUST have both endpoints inside the chrome's shadow root. Nothing references across the host↔chrome boundary, in either direction. Relationships between chrome and host-page elements are expressed as announcements (§8.5) or visual cues, never as ARIA references.
 
 ### 8.3 P3 — panels are native `<dialog>`
 
@@ -249,7 +249,7 @@ A panel's frame is a native `<dialog>` element, in both modes:
 - **Modal** (`showModal()`): trapping, top layer, Esc, and inertness of the rest of the page work natively across shadow boundaries — no sentinel elements. Verified caveat, requiring no mitigation: Tab can still reach the browser address bar, a general `<dialog>` property, not a shadow issue.
 - **Non-modal** (`show()`): the platform provides **nothing** — the adapter MUST supply initial focus (the first focusable element in the panel) and its own Esc handling.
 
-Both modes MUST share **one close path**: the adapter routes modal's `cancel` event into the same code that handles non-modal Esc, the close affordance, and programmatic close (§5.2), so dispose/clear/announce/restore logic exists exactly once.
+Both modes MUST share **one close path**: the adapter routes modal's `cancel` event into the same code that handles non-modal Esc, the close button, and programmatic close (§5.2), so dispose/clear/announce/restore logic exists exactly once.
 
 ### 8.4 P4 — mount, dispose, force-clear
 
@@ -259,7 +259,7 @@ The lifecycle of §5.2, restated as the chrome's obligation: dispose then force-
 
 State changes a sighted user sees (panel opened/closed, command feedback) MUST be announced via an `aria-live` region **inside the shadow root**, mutated with **plain text only**. This placement is the default — VoiceOver speaks it in Safari and Chrome.
 
-The adapter MUST also own a visually-hidden **light-DOM fallback live region** adjacent to the host element, switchable at runtime, as the escape hatch for screen-reader combinations where the shadow-internal region proves silent (the research found NVDA/JAWS divergence; that matrix is not yet run). The fallback is an adapter affordance, invisible to plugins.
+The adapter MUST also own a visually-hidden **light-DOM fallback live region** adjacent to the host element, switchable at runtime, as the escape hatch for screen-reader combinations where the shadow-internal region proves silent (the research found NVDA/JAWS divergence; that matrix is not yet run). The fallback is an adapter feature, invisible to plugins.
 
 ### 8.6 P6 — shadow-aware focus bookkeeping
 
@@ -293,11 +293,11 @@ Agent UI-steering re-enters, if ever, alongside a future in-page-agent-consumers
 Recorded futures, all shaped to be **minor-version additive** under §2.2:
 
 - `slot` — a second contributable region (absent = strip). Arrives only when a real region exists.
-- `group` — cross-plugin grouping vocabulary, if the unsayability of §6.3 is ever deliberately revisited.
+- `group` — cross-plugin grouping scheme, if the unsayability of §6.3 is ever deliberately revisited.
 - `preferredSize` — a panel size hint.
 - A keep-alive hint on panels — relaxing mount-on-open/dispose-on-close as a performance opt-in.
 - A plugin-facing programmatic close (and possibly open) API for a plugin's own panels.
 - Further item kinds — menus/dropdowns, status text zones, custom inline widgets, tabs-within-panels — each admitted only when a concrete plugin demonstrably cannot be expressed with the two kinds plus badge. (All four v1 reference plugins are expressible without them.)
 - Running the remaining screen-reader matrix (NVDA, JAWS) against P5; flipping the default region placement, should the evidence demand it, is a behavioral change inside the adapter and not a contract change — the contract already requires both regions.
 
-The uniform posture matches the kernel ([§15](./kernel-api.md#15-versioning-and-forward-compatibility)): unknown fields tolerated with a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), reserved names never repurposed, malformed contributions rejected [loudly](./diagnostics.md#21-loud-errors) — rejecting that contribution only.
+The uniform rule matches the kernel ([§15](./kernel-api.md#15-versioning-and-forward-compatibility)): unknown fields tolerated with a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), reserved names never repurposed, malformed contributions rejected [loudly](./diagnostics.md#21-loud-errors) — rejecting that contribution only.

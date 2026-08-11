@@ -1,6 +1,6 @@
 # Bridge flows
 
-This file covers what happens on the page path over time: connection and reconnection, snapshot sync, invocation and cancellation, context reads, and events polling. Static layout is covered in [`topology.md`](./topology.md), and exposure rules in [`exposure-model.md`](./exposure-model.md). Source of truth: [bridge §4–§9](../spec/bridge-protocol.md#4-the-wire-envelope), [§13–§14](../spec/bridge-protocol.md#13-active-tab-and-multi-tab).
+This file covers what happens on the page path over time: connection and reconnection, snapshot sync, invocation and cancellation, context reads, and events polling. Static layout is covered in [`topology.md`](./topology.md), and exposure rules in [`exposure-model.md`](./exposure-model.md). Source of truth: [bridge §4–§9](../spec/bridge-protocol.md#4-the-message-envelope), [§13–§14](../spec/bridge-protocol.md#13-active-tab-and-multi-tab).
 
 Four participants appear in the diagrams below: the **agent** (any MCP client), the **bridge** (`bridge-mcp`'s node side, meaning the MCP edge plus the bridge core), the **page client** (`bridge-mcp`'s browser export, attached by the adapter's bootstrap), and the **kernel** (`core`, running in the page).
 
@@ -88,7 +88,7 @@ sequenceDiagram
     B-->>A: tool result (isError on any failure, naming the command)
 ```
 
-- Dispatch runs detached, and the message listener returns without waiting for the handler ([bridge §7.2](../spec/bridge-protocol.md#72-the-wire-pump-rule)). If the listener awaits a running handler, message processing stalls, and that includes delivery of `cancel`. Transport testing showed this directly: inline awaiting delayed cancellation until the command had already finished.
+- Dispatch runs detached, and the message listener returns without waiting for the handler ([bridge §7.2](../spec/bridge-protocol.md#72-the-message-loop-rule)). If the listener awaits a running handler, message processing stalls, and that includes delivery of `cancel`. Transport testing showed this directly: inline awaiting delayed cancellation until the command had already finished.
 - Three causes converge on one path. Agent-side cancellation, bridge timeout (60 seconds by default), and agent disconnect mid-call all arrive as the same `cancel` message. Cancellation is cooperative and best-effort: if a handler ignores its signal and finishes, the bridge tolerates either a late `result`, which it discards, or silence ([bridge §7.3](../spec/bridge-protocol.md#73-cancellation), [§7.4](../spec/bridge-protocol.md#74-bridge-timeout)).
 - Disconnect mid-invoke fails immediately, with *page disconnected during invocation; outcome unknown*. The bridge does not wait out the grace period, because the outcome is already unknown ([bridge §7.5](../spec/bridge-protocol.md#75-disconnect-mid-invoke)).
 
