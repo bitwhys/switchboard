@@ -1,10 +1,10 @@
 # Reference Plugin Brief: Feedback & Annotations
 
-**Brief, not contract.** This document describes the v1 reference plugin `reference.feedback` — the suite's **flagship** — at surface level. It carries no version header: briefs describe plugins, contracts bind them. Domain vocabulary (annotation, lifecycle, outbox, sink, agent loop) lives in the glossary (`CONTEXT.md`, "Annotations").
+**Brief, not contract.** This document describes the v1 reference plugin `reference.feedback` — the suite's **main example** — at surface level. It carries no version header: briefs describe plugins, contracts bind them. Domain terms (annotation, lifecycle, outbox, sink, agent loop) lives in the glossary (`CONTEXT.md`, "Annotations").
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
-*Consolidates (non-normative): the resolutions of tickets #14 (reference plugin briefs), #12 (element descriptions), and #13 (composition stress test, scenarios 1–2).*
+*Background (not binding): the resolutions of tickets #14 (reference plugin briefs), #12 (element descriptions), and #13 (composition stress test, scenarios 1–2).*
 
 ---
 
@@ -12,12 +12,12 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** in this document a
 
 *Consolidates: #14.*
 
-Human-authored, route-scoped **annotations** with a **local-first loop**: annotations live in the plugin's storage outbox, and egress rides a capability seam — `feedback.sink` — that is probed, never required, with **no v1 provider shipped**. Absent a sink, the loop still closes locally.
+Human-authored, route-scoped **annotations** with a **local-first loop**: annotations live in the plugin's storage outbox, and delivery rides a capability extension point — `feedback.sink` — that is probed, never required, with **no v1 provider shipped**. Absent a sink, the loop still closes locally.
 
 Two policies define the plugin:
 
 - **Creation is human-only.** The agent surface is read + resolve, nothing else — the faster-fixes shape: humans point, agents fix.
-- **Storage is working state, not a system of record.** An annotation's durable home is wherever a sink puts it; the outbox holds what awaits action or egress.
+- **Storage is working state, not a system of record.** An annotation's durable home is wherever a sink puts it; the outbox holds what awaits action or delivery.
 
 ## 2. Manifest
 
@@ -56,14 +56,14 @@ interface Annotation {
 }
 ```
 
-Wire-legal by construction ([kernel spec §14](../kernel-api.md#14-the-wire-legal-rule)). The anchor is an **element description** ([inspector contract §7](../dom-inspector-contract.md#7-element-descriptions-the-durable-anchor-split)) — fuzzy, best-effort, reload-surviving; storing an ElementReference is always a bug.
+Plain JSON by construction ([kernel spec §14](../kernel-api.md#14-the-plain-json-rule)). The anchor is an **element description** ([inspector contract §7](../dom-inspector-contract.md#7-element-descriptions-the-durable-anchor-split)) — fuzzy, best-effort, reload-surviving; storing an ElementReference is always a bug.
 
 **Lifecycle `draft` → `open` → `resolved`:**
 
 - Drafts are private working state; they persist in storage and survive reload.
-- Submission (draft → open) is the moment an annotation becomes visible to agents and eligible for egress; it fires `feedback.submitted`. A sink, when present, gets first crack at the submission.
+- Submission (draft → open) is the moment an annotation becomes visible to agents and eligible for delivery; it fires `feedback.submitted`. A sink, when present, gets first crack at the submission.
 - `feedback.resolve` MUST require a resolution note saying what was done.
-- Resolved annotations stay in the outbox until egressed or cleared from the panel.
+- Resolved annotations stay in the outbox until delivered or cleared from the panel.
 
 Stored records are read defensively ([kernel spec §13.4](../kernel-api.md#134-durability-reachability-not-shape)).
 
@@ -98,7 +98,7 @@ The plugin observes `a11y.scan-completed` — the suite's only in-page cross-plu
 - **Panel** — id `feedback.panel`, title "Feedback": annotation list for the current route, compose/draft/submit, clear-resolved.
 - **Panel item** — opens the panel, with `badge: { context: 'feedback.open-count' }` ([toolbar contract §4.3](../toolbar-contract.md#43-badges)).
 
-## 8. Flagship success criterion: the agent loop
+## 8. The main success criterion: the agent loop
 
 *Consolidates: #14, #13.*
 
@@ -123,4 +123,4 @@ Validates, for the suite's coverage matrix ([index](../README.md)):
 - element descriptions as durable anchors;
 - the full human → agent → human loop over the bridge.
 
-The `feedback.sink` seam is one of the recorded doors to the (out-of-scope) production egress effort; the others are the bridge handshake's reserved `auth` field ([bridge spec §15.4](../bridge-protocol.md#154-the-reserved-auth-field)) and WebMCP shape-compatibility.
+The `feedback.sink` extension point is one of the recorded routes to the (out-of-scope) production delivery work; the others are the bridge handshake's reserved `auth` field ([bridge spec §15.4](../bridge-protocol.md#154-the-reserved-auth-field)) and WebMCP shape-compatibility.

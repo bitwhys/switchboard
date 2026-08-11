@@ -4,7 +4,7 @@
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
-*Consolidates (non-normative): the resolutions of tickets #14 (reference plugin briefs) and #13 (composition stress test, scenario 3).*
+*Background (not binding): the resolutions of tickets #14 (reference plugin briefs) and #13 (composition stress test, scenario 3).*
 
 ---
 
@@ -51,7 +51,7 @@ definePlugin({
 | Event | `metrics.long-task` | one announcement per observed long task |
 
 - Vitals are **per-vital keys**, not one blob: whole-value replace ([kernel spec §8.2](../kernel-api.md#82-whole-value-replace)) stays cheap and observers subscribe narrowly to exactly the vital they care about.
-- Values and payloads MUST be wire-legal ([kernel spec §14](../kernel-api.md#14-the-wire-legal-rule)) — plain numbers and small plain objects.
+- Values and payloads MUST be plain JSON ([kernel spec §14](../kernel-api.md#14-the-plain-json-rule)) — plain numbers and small plain objects.
 - A long task is a *moment*, not a state — the Event side of the boundary rule ([kernel spec §8](../kernel-api.md#8-context)) in its most natural habitat. The latest value of each vital is *what is true right now* — the Context side.
 
 ## 4. Agent surface
@@ -72,4 +72,4 @@ Validates, for the suite's coverage matrix ([index](../README.md)):
 - Events reaching the tail buffer ([bridge spec §9.2](../bridge-protocol.md#92-the-tail-buffer));
 - the Context/Event boundary rule in its most natural habitat.
 
-**Composition evidence** ([stress test, scenario 3](../../../prototypes/primitive-stress-test/README.md)): a hypothetical third-party plugin (`acme.perf-coach`) gating a command's `when` on long-task pressure cannot read Events — `when` reads Context only ([kernel spec §11.1](../kernel-api.md#111-the-tracked-read-context-view)) — and must own its reduce-into-Context. That strain was examined and accepted: reduction semantics are domain logic, and Event ephemerality is load-bearing.
+**Composition evidence** ([stress test, scenario 3](../../../prototypes/primitive-stress-test/README.md)): a hypothetical third-party plugin (`acme.perf-coach`) gating a command's `when` on long-task pressure cannot read Events — `when` reads Context only ([kernel spec §11.1](../kernel-api.md#111-the-tracked-read-context-view)) — and must own its reduce-into-Context. That strain was examined and accepted: reduction semantics are domain logic, and Event ephemerality matters.

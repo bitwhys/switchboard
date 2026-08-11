@@ -1,22 +1,22 @@
 # Switchboard Kernel API Specification
 
-**Version: Kernel API v1.** The manifest schema and the permission vocabulary are part of this contract and version with it; there is no separate manifest or permission version.
+**Version: Kernel API v1.** The manifest schema and the permission strings are part of this contract and version with it; there is no separate manifest or permission version.
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
-TypeScript signatures and typed-JSON shape blocks in this document are **normative**. Prose qualifies them; it does not override them.
+TypeScript signatures and typed-JSON shape blocks in this document are **binding**. Prose qualifies them; it does not override them.
 
-This document is the one normative home for three cross-cutting rules: the **naming grammar** (§2), the **permission vocabulary** (§12), and the **wire-legal rule** (§14). Every other document in the spec suite cites these sections by link and MUST NOT paraphrase them. The words **loud**, **named error**, and **dev-mode warning**, used throughout, are defined once in [`diagnostics.md`](./diagnostics.md). Related documents: [`bridge-protocol.md`](./bridge-protocol.md) (what the bridge does about these contracts), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
+This document is the one place that defines three cross-cutting rules: the **naming grammar** (§2), the **permission strings** (§12), and the **plain-JSON rule** (§14). Every other document in the spec suite cites these sections by link and MUST NOT paraphrase them. The words **loud**, **named error**, and **dev-mode warning**, used throughout, are defined once in [`diagnostics.md`](./diagnostics.md). Related documents: [`bridge-protocol.md`](./bridge-protocol.md) (what the bridge does about these contracts), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
 
-*Consolidates (non-normative): the resolutions of tickets #5, #6, #8, #12, #16, #38, #44 and the schema-authoring research ([`docs/research/schema-authoring-for-commands.md`](../research/schema-authoring-for-commands.md)).*
+*Background (not binding): the resolutions of tickets #5, #6, #8, #12, #16, #38, #44 and the schema-authoring research ([`docs/research/schema-authoring-for-commands.md`](../research/schema-authoring-for-commands.md)).*
 
 ---
 
 ## 1. Scope
 
-The kernel (`core`) is the framework-agnostic runtime that hosts plugins and owns the registries of the four primitives — Command, Event, Context, and Service — plus two pieces of kernel infrastructure: Disposable-based teardown and Storage. The kernel has no domain vocabulary of its own and MUST NOT import UI frameworks.
+The kernel (`core`) is the framework-agnostic runtime that hosts plugins and owns the registries of the four primitives — Command, Event, Context, and Service — plus two pieces of kernel infrastructure: Disposable-based teardown and Storage. The kernel has no domain terms of its own and MUST NOT import UI frameworks.
 
-Out of scope here, by the one-normative-home rule: bridge exposure mechanics and the wire-legal enforcement point (bridge protocol spec), toolbar placement (`toolbar` capability contract), and element identity (`dom.inspector` capability contract). Capability-owned vocabulary lives in the owning capability's contract, never in this spec.
+Out of scope here, because each is defined elsewhere: bridge exposure mechanics and where the plain-JSON rule is enforced (bridge protocol spec), toolbar placement (`toolbar` capability contract), and element identity (`dom.inspector` capability contract). Capability-owned terms lives in the owning capability's contract, never in this spec.
 
 v1 trusts plugin code. Plugins are installed by the application developer; nothing in this specification is a security boundary against a malicious plugin.
 
@@ -94,19 +94,19 @@ interface PluginDefinition {
 declare function definePlugin(definition: PluginDefinition): PluginDefinition
 ```
 
-There is no `manifestVersion` field and MUST NOT be one: the manifest schema — permission vocabulary included — is kernel API surface and versions with it.
+There is no `manifestVersion` field and MUST NOT be one: the manifest schema — permission strings included — is kernel API surface and versions with it.
 
 The manifest deliberately excludes `icon`, `homepage`, `repository`, `author`, `license`, `engines`-style kernel-compatibility ranges, and any `contributes`-style declarative registration block. Registration is imperative, through `PluginApi` only.
 
 ### 3.2 Static extractability ("literals only")
 
-Manifest fields — in particular `id`, `provides`, and `requires` — MUST be written as literals so the manifest is readable without executing code. This is a conformance rule for authors, checked by tooling or lint; the kernel cannot and does not detect computed strings at runtime.
+Manifest fields — in particular `id`, `provides`, and `requires` — MUST be written as literals so the manifest is readable without executing code. This is a rule for authors, checked by tooling or lint; the kernel cannot and does not detect computed strings at runtime.
 
 ### 3.3 Manifest validation
 
 Malformed manifests MUST be rejected [loudly](./diagnostics.md#21-loud-errors): missing required fields (`id`, `name`, `version`, `setup`), an `id` violating the name grammar, a non-semver `version`, or `provides`/`requires`/`permissions`/`activation` entries violating their grammars. A manifest error blocks **that plugin only**; other plugins proceed.
 
-Unknown manifest **fields** MUST be tolerated: preserved verbatim, surfaced as a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), never an error. See §15 for the full forward-compatibility posture.
+Unknown manifest **fields** MUST be tolerated: preserved verbatim, surfaced as a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), never an error. See §15 for the full forward-compatibility rule.
 
 ## 4. Activation and lifecycle
 
@@ -114,9 +114,9 @@ Unknown manifest **fields** MUST be tolerated: preserved verbatim, surfaced as a
 
 ### 4.1 Activation hints
 
-`activation?: string[]` lists additive wake conditions — any one suffices to wake the plugin. Hints use the colon grammar (§12.1). The v1 vocabulary is exactly one word: **`eager`**, which is also the default when the field is omitted. Unknown hints MUST be behaviorally ignored with a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings).
+`activation?: string[]` lists additive wake conditions — any one suffices to wake the plugin. Hints use the colon grammar (§12.1). The v1 set is exactly one word: **`eager`**, which is also the default when the field is omitted. Unknown hints MUST be behaviorally ignored with a [dev-mode warning](./diagnostics.md#22-dev-mode-warnings).
 
-(The lazy-trigger vocabulary is deliberately not designed in v1; this field is the seam it will occupy, since with imperative registration future lazy activation must be driven entirely by manifest pre-declaration.)
+(The lazy-trigger names is deliberately not designed in v1; this field is the slot it will occupy, since with imperative registration future lazy activation must be driven entirely by manifest pre-declaration.)
 
 ### 4.2 Activation
 
@@ -142,7 +142,7 @@ Deactivation does **not** auto-delete the plugin's context keys (§8.4).
 
 *Consolidates: #5, #8.*
 
-`setup` receives the plugin's only door into the kernel, grouped by primitive plus kernel infrastructure:
+`setup` receives the plugin's only entry into the kernel, grouped by primitive plus kernel infrastructure:
 
 ```ts
 interface PluginApi {
@@ -163,7 +163,7 @@ Terminology rule: the word **Context** belongs exclusively to the primitive. The
 
 ## 6. Commands
 
-*Consolidates: #5; schema posture from #3.*
+*Consolidates: #5; schema decision from #3.*
 
 A **Command** is a named, invocable operation: one structured input in, serializable data out. Commands are the unit agents invoke as MCP tools.
 
@@ -195,8 +195,8 @@ interface Invocation {
 ### 6.1 Registration and dispatch
 
 - Command ids MUST satisfy the name grammar (§2.1) — which keeps them within MCP's `[A-Za-z0-9_.-]`, ≤ 128 chars — and MUST be unique (exclusive kind, §2.2). Violations are [loud](./diagnostics.md#21-loud-errors) registration errors. Ids pass to the bridge verbatim as tool names; the bridge never sanitizes.
-- `execute` takes a single structured input object (mirroring MCP `tools/call`) and returns a JSON-safe value (wire-legal, §14). The handler MAY be sync or async; callers always receive a Promise.
-- The handler is named `execute` for shape-compatibility with W3C WebMCP `ModelContext.registerTool` and vocabulary symmetry with `commands.execute`.
+- `execute` takes a single structured input object (mirroring MCP `tools/call`) and returns a JSON-safe value (plain JSON, §14). The handler MAY be sync or async; callers always receive a Promise.
+- The handler is named `execute` for shape-compatibility with W3C WebMCP `ModelContext.registerTool` and naming symmetry with `commands.execute`.
 - Errors thrown by the handler become structured invocation errors wrapped with the command id. (At the bridge these map to MCP `isError: true` results — see the bridge protocol spec.)
 
 ### 6.2 Schemas
@@ -205,7 +205,7 @@ The kernel depends on **no schema library**. `inputSchema` and `outputSchema` ar
 
 Authors MAY produce these objects however they like; the blessed paths are: any Standard-Schema library with JSON Schema emission (Zod ≥ 4.2 is the recommended default) via the first-party `fromStandardSchema()` helper, TypeBox (whose types are already JSON Schema objects), or hand-written JSON Schema. See the schema-authoring research for evidence.
 
-Declaring `outputSchema` is a conformance promise by the plugin. Its enforcement point is the bridge edge, not pre-dispatch — see the bridge protocol spec.
+Declaring `outputSchema` is a promise by the plugin. Its enforcement point is the bridge edge, not pre-dispatch — see the bridge protocol spec.
 
 ### 6.3 Validation
 
@@ -242,7 +242,7 @@ interface EmitMeta {
 ```
 
 - Events are **strictly ephemeral: no replay, no buffering, ever.** A late subscriber missed it. Replay has exactly one home — Context (§8). The boundary rule: *need the latest value later → Context; only announcing a moment → Event.*
-- Payloads MUST be wire-legal (§14).
+- Payloads MUST be plain JSON (§14).
 - Event names are an open channel (§2.2); emission is unrestricted and namespace ownership is by convention.
 - There are no wildcard subscriptions in v1.
 
@@ -267,7 +267,7 @@ interface ContextApi {
 
 ### 8.2 Whole-value replace
 
-Values are wire-legal (§14) and **replaced whole** — there is no patch API in v1. Mutating an object after passing it to `set` (or after receiving it in a callback) is undefined behavior.
+Values are plain JSON (§14) and **replaced whole** — there is no patch API in v1. Mutating an object after passing it to `set` (or after receiving it in a callback) is undefined behavior.
 
 ### 8.3 Notification semantics
 
@@ -299,7 +299,7 @@ interface ServicesApi {
 
 *Consolidates: #5.*
 
-Switchboard's capability posture is **checked, not solved**: a flat presence-and-version check with [loud named errors](./diagnostics.md#21-loud-errors). No dependency resolver, no activation reordering, no graph.
+Switchboard's capability model is **checked, not solved**: a flat presence-and-version check with [loud named errors](./diagnostics.md#21-loud-errors). No dependency resolver, no activation reordering, no graph.
 
 ### 10.1 Declarations
 
@@ -349,7 +349,7 @@ The `when` contract is defined on commands and reused verbatim by toolbar items 
 
 *Consolidates: #6, #8.*
 
-This section is the one normative home for the permission vocabulary. Bridge-grant *mechanics* — existence-at-the-bridge, act-based attribution, the exposure summary — are the bridge protocol spec's obligation.
+This section is the one place that defines the permission strings. Bridge-grant *mechanics* — existence-at-the-bridge, act-based attribution, the exposure summary — are the bridge protocol spec's obligation.
 
 ### 12.1 Grammar
 
@@ -357,7 +357,7 @@ A permission string is **`area:action`** — exactly two segments in v1, colon-s
 
 The governing rule: **every permission string must name a surface the kernel or bridge could actually gate** — an interceptable choke point. `area` names the surface, `action` the mode of access. Nothing aspirational gets a string. One validator, [loud errors](./diagnostics.md#21-loud-errors) on malformed strings.
 
-### 12.2 The v1 vocabulary — eight strings
+### 12.2 The eight v1 permission strings
 
 Every permission carries an explicit **enforcement status**. Flipping advisory → enforced later is a kernel API semver event, not a schema break.
 
@@ -372,7 +372,7 @@ Every permission carries an explicit **enforcement status**. Flipping advisory �
 | `network:observe` | advisory | observes the page's network traffic |
 | `network:request` | advisory | issues its own network requests |
 
-The `bridge:*` family is **default-closed and all-or-nothing per family per plugin**; permission = *existence* at the bridge, `when` = *listing* (§11.2). The advisory family is the future sandboxing seam: descriptive in v1, gateable later.
+The `bridge:*` family is **default-closed and all-or-nothing per family per plugin**; permission = *existence* at the bridge, `when` = *listing* (§11.2). The advisory family is the future sandboxing hook: descriptive in v1, gateable later.
 
 An **unknown** permission string is tolerated ([dev-mode warning](./diagnostics.md#22-dev-mode-warnings), carried verbatim) and **grants nothing** — the kernel and bridge honor only strings they know, so unknown is fail-safe in both directions. A **malformed** string is [loudly](./diagnostics.md#21-loud-errors) rejected (§3.3).
 
@@ -398,7 +398,7 @@ interface StorageArea {
 }
 ```
 
-Fully async (the only shape every candidate engine can honor); no sync reads — "what is true right now" already has a sync home in Context. No queries, transactions, or watch/subscribe in v1. Values MUST be JSON-serializable (the same constraint as wire-legal data, §14).
+Fully async (the only shape every candidate engine can honor); no sync reads — "what is true right now" already has a sync home in Context. No queries, transactions, or watch/subscribe in v1. Values MUST be JSON-serializable (the same constraint as plain-JSON data, §14).
 
 ### 13.2 Namespacing
 
@@ -425,23 +425,23 @@ Value **shape** is plugin-owned under the **defensive read** convention: storage
 
 ### 13.6 Storage never bridges
 
-No `bridge:storage` permission exists or is reserved. Agents never see stored bytes; a plugin that wants stored data agent-visible publishes it deliberately through the existing doors — a Command that returns it or a Context key that mirrors it — governed by the ordinary bridge grants.
+No `bridge:storage` permission exists or is reserved. Agents never see stored bytes; a plugin that wants stored data agent-visible publishes it deliberately through the primitives that already exist — a Command that returns it or a Context key that mirrors it — governed by the ordinary bridge grants.
 
-The boundary rule: *state that must survive a reload → storage; state others must see → egress (bridge or network), never storage — Switchboard is not a system of record.*
+The boundary rule: *state that must survive a reload → storage; state others must see → send it out (bridge or network), never storage — Switchboard is not a system of record.*
 
-## 14. The wire-legal rule
+## 14. The plain-JSON rule
 
 *Consolidates: #12.*
 
-This section is the one normative home for the serializability contract. Its **enforcement point** is the bridge — see the bridge protocol spec; the kernel never deep-inspects payloads.
+This section is the one place that defines the serializability contract. Its **enforcement point** is the bridge — see the bridge protocol spec; the kernel never deep-inspects payloads.
 
 ### 14.1 Definition
 
-A value is **wire-legal** iff it survives `JSON.parse(JSON.stringify(x))` unchanged: objects, arrays, strings, finite numbers, booleans, `null`. Not wire-legal: `Date`, `Uint8Array` (and all binary), `Map`/`Set`, cycles, functions, and meaningful `undefined`. Timestamps travel as numbers or ISO strings under the plugin's own schema; binary is out of scope for v1.
+A value is **plain JSON** iff it survives `JSON.parse(JSON.stringify(x))` unchanged: objects, arrays, strings, finite numbers, booleans, `null`. Not plain JSON: `Date`, `Uint8Array` (and all binary), `Map`/`Set`, cycles, functions, and meaningful `undefined`. Timestamps travel as numbers or ISO strings under the plugin's own schema; binary is out of scope for v1.
 
 ### 14.2 Binding
 
-The rule binds **all three bridgeable primitives unconditionally** — Command inputs and results, Event payloads, and Context values MUST be wire-legal whether or not any `bridge:*` grant is held. (Otherwise adding a grant later would break the plugin's own data.) Bridge grants never change the contract.
+The rule binds **all three bridgeable primitives unconditionally** — Command inputs and results, Event payloads, and Context values MUST be plain JSON whether or not any `bridge:*` grant is held. (Otherwise adding a grant later would break the plugin's own data.) Bridge grants never change the contract.
 
 The boundary rule: *live object → Service; data → everything else, and data means strict JSON.*
 
@@ -453,20 +453,20 @@ There are no payload size caps in v1; "keep payloads small" is prose guidance.
 
 Two version numbers exist in Switchboard: the **kernel API version** (this document; semver on the `core` package) and the **bridge protocol version** (a plain integer; see the bridge protocol spec). Capability contracts carry their own semvers on the capability name (§10.1) and version independently.
 
-The manifest schema, activation-hint vocabulary, and permission vocabulary are kernel API surface: additions and enforcement-status changes land as kernel API semver events.
+The manifest schema, activation-hint strings, and permission strings are kernel API surface: additions and enforcement-status changes land as kernel API semver events.
 
-The uniform posture, applied throughout this spec:
+The uniform rule, applied throughout this spec:
 
 - **Unknown = tolerated.** Unknown manifest fields, permission strings, and activation hints: [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), preserved/carried verbatim, never an error, never a grant.
 - **Malformed = rejected [loudly](./diagnostics.md#21-loud-errors)**, blocking that plugin only.
 
-Shaped-to-be-additive future work (deliberately not v1): per-registration `bridged: false` opt-outs, wildcard and qualified permissions, the lazy-activation trigger vocabulary, an IndexedDB storage engine, binary payload support, and an observable plugin list (§16.2 is pull-only).
+Shaped-to-be-additive future work (deliberately not v1): per-registration `bridged: false` opt-outs, wildcard and qualified permissions, the lazy-activation trigger names, an IndexedDB storage engine, binary payload support, and an observable plugin list (§16.2 is pull-only).
 
 ## 16. Registry observation and the plugin list
 
 *Consolidates: #38.*
 
-The kernel's registration state is publicly readable, through two read-only surfaces: a **command observation** feed (§16.1) and a **plugin list** (§16.2), each available on both doors (§16.3). They exist for consumers that render or project the registry — toolbar adapters, inspectors, host-level glue.
+The kernel's registration state is publicly readable, through two read-only surfaces: a **command observation** feed (§16.1) and a **plugin list** (§16.2), each available through both the plugin API and the host instance (§16.3). They exist for consumers that render or project the registry — toolbar adapters, inspectors, host-level glue.
 
 Both surfaces report **registration and `when` facts only** (§11): what is registered, by whom, and whether it is currently listed. They are **grant-agnostic** — no permission gates them (§12.2: there are no registry permissions) and no grant filtering is applied to what they report. A consumer that must filter — for example, to compute an agent-listable surface — applies its own filters to the records.
 
@@ -487,7 +487,7 @@ interface CommandRecord {
 }
 ```
 
-- `observe` MUST fire **synchronously on subscribe** with the complete current array (the same replay posture as `context.observe`, §8.1), and again with the complete new array on every command registration, disposal, and `when` flip — a re-evaluation that changes `listed` (§11.1). Nothing else fires it.
+- `observe` MUST fire **synchronously on subscribe** with the complete current array (the same replay behavior as `context.observe`, §8.1), and again with the complete new array on every command registration, disposal, and `when` flip — a re-evaluation that changes `listed` (§11.1). Nothing else fires it.
 - **Snapshots, never deltas**: every callback receives the full array, in registration order. The kernel applies **no debounce** and no equality dedup; a consumer that needs coalescing debounces on its own side.
 - When-hidden commands are **included**, with `listed: false`, so inspector-style consumers see everything. A consumer building a visible or agent-facing surface filters on `listed` itself (§11.2: `when` gates listing, never dispatch).
 - A record carries the command's **data fields only** — `inputSchema`, `outputSchema`, and `annotations` are the objects passed at registration, carried verbatim. `execute`, `validate`, and `when` never appear on a record; behavior does not cross this surface. Mutating a record or its schemas is undefined behavior (§8.2's rule).
@@ -520,14 +520,14 @@ interface PluginRecord {
 - `status`: **`pending`** — not yet activated, or an async `setup` still running; **`active`** — `setup` completed; **`failed`** — capability check failed (§10.3) or `setup` threw.
 - Each call returns a fresh snapshot; mutating a record is undefined behavior. The list is a pull, not a feed — there is no plugin-list observation in v1 (recorded future, §15); a consumer wanting fresher `status` calls `list()` again.
 
-### 16.3 Both doors
+### 16.3 Both APIs agree
 
 Both surfaces appear **twice, under the same names**:
 
 - on **`PluginApi`** (§5) — `api.commands.observe(…)`, `api.plugins.list()` — for plugins: toolbar adapters, third-party adapters, inspectors;
 - on the **kernel instance** returned by `createSwitchboard()` — `kernel.commands.observe(…)`, `kernel.plugins.list()` — for host-level glue that is not a plugin.
 
-The two doors expose the same data with the same semantics; nothing is reachable through one that is hidden from the other. (This section fixes only these two surfaces on the instance; the full instance shape is §18.2.)
+The two APIs expose the same data with the same semantics; nothing is reachable through one that is hidden from the other. (This section fixes only these two surfaces on the instance; the full instance shape is §18.2.)
 
 ## 17. The kernel handoff
 
@@ -555,7 +555,7 @@ interface KernelHandoff {
 - `subscribe(cb)` MUST synchronously replay every kernel currently announced and not retracted, in announce order, then fire once per future `push`. Order-independence follows: it does not matter whether the kernel or its consumer ran first.
 - The handoff carries kernel instances and nothing else — no configuration, no consumer-specific payloads.
 
-Announcing is unconditional — it is not dev-gated; the handoff is load-bearing wiring, not a diagnostic. The full `createSwitchboard` signature and lifecycle are §18's.
+Announcing is unconditional — it is not dev-gated; the handoff is essential wiring, not a diagnostic. The full `createSwitchboard` signature and lifecycle are §18's.
 
 ### 17.2 First live kernel wins
 
@@ -573,7 +573,7 @@ One page has one kernel. Announcing a second kernel while a first is still live 
 
 *Consolidates: #44.*
 
-The application developer turns Switchboard on by calling `createSwitchboard` once, in client code. This section is the normative home for the construction surface: the signature, the returned instance, the failure envelope, and the one-kernel topology rule. What an app developer actually types per host — setup modules, dev gating, adapter bootstrap wiring — is adapter-contract territory, not this document's.
+The application developer turns Switchboard on by calling `createSwitchboard` once, in client code. This section is the one place that defines the construction surface: the signature, the returned instance, the failure envelope, and the one-kernel topology rule. What an app developer actually types per host — setup modules, dev gating, adapter bootstrap wiring — is the adapter contract's business, not this document's.
 
 ### 18.1 Signature
 
@@ -606,7 +606,7 @@ interface Switchboard {
 }
 ```
 
-- The instance is a **full host door**: the four primitive APIs with the same names and semantics as `PluginApi` (§5), plus the two read surfaces of §16 (per §16.3) and the diagnostics channel. v1 trusts in-page code (§1); withholding primitives from the application that constructed the kernel would protect nothing.
+- The instance is a **full host API**: the four primitive APIs with the same names and semantics as `PluginApi` (§5), plus the two read surfaces of §16 (per §16.3) and the diagnostics channel. v1 trusts in-page code (§1); withholding primitives from the application that constructed the kernel would protect nothing.
 - Acts through the instance are attributed to the reserved **`host`** party wherever an acting party is stamped: `EmitMeta.source` (§7, §8), `Invocation.source` (§6), and diagnostics attribution (diagnostics spec §4.1).
 - `ready` resolves when eager activation has settled — every installed plugin has reached `active` or `failed` (§16.2). It **settles always and MUST NOT reject**: per-plugin failures are already loud on the diagnostics channel, and who made it is legible in `plugins.list()`.
 - `dispose()` tears down every plugin (§4.3), then the kernel, and **retracts the instance's §17 announce** (§17.3). It is the sanctioned replace path under HMR and the test-isolation primitive: dispose, then construct fresh.

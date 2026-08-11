@@ -1,14 +1,14 @@
 # Switchboard `dom.inspector` Capability Contract
 
-**Version: `dom.inspector@1.0.0`.** The capability's semver **is** the contract version: a provider declares `provides: ["dom.inspector@1.0.0"]`, consumers pin ranges with `requires: ["dom.inspector@^1"]` ([kernel spec §10.1](./kernel-api.md#101-declarations)). The version is decoupled from any npm package version — the same posture as the `toolbar` capability. Everything in this document — the envelope, the registry semantics, the facet menu, the command surfaces — versions under this semver (§8).
+**Version: `dom.inspector@1.0.0`.** The capability's semver **is** the contract version: a provider declares `provides: ["dom.inspector@1.0.0"]`, consumers pin ranges with `requires: ["dom.inspector@^1"]` ([kernel spec §10.1](./kernel-api.md#101-declarations)). The version is decoupled from any npm package version — the same approach as the `toolbar` capability. Everything in this document — the envelope, the registry semantics, the facet menu, the command surfaces — versions under this semver (§8).
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
-TypeScript signatures and typed-JSON shape blocks in this document are **normative**. Prose qualifies them; it does not override them.
+TypeScript signatures and typed-JSON shape blocks in this document are **binding**. Prose qualifies them; it does not override them.
 
-This is a **capability contract**: it binds whichever plugin provides the `dom.inspector` capability, and it is the one normative home for element identity in Switchboard. The kernel spec deliberately contains no DOM vocabulary ([kernel spec §1](./kernel-api.md#1-scope)); the cross-cutting rules this document leans on — the naming grammar, the permission vocabulary, and the wire-legal rule — live in [`kernel-api.md`](./kernel-api.md) and are cited, never restated; the words **named error** and **loud** are defined in [`diagnostics.md`](./diagnostics.md). Bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md). Related documents: [`toolbar-contract.md`](./toolbar-contract.md) (this document's structural twin), [`plugins/inspector.md`](./plugins/inspector.md) (the v1 reference provider's brief).
+This is a **capability contract**: it binds whichever plugin provides the `dom.inspector` capability, and it is the one place that defines element identity in Switchboard. The kernel spec deliberately contains no DOM terms ([kernel spec §1](./kernel-api.md#1-scope)); the cross-cutting rules this document leans on — the naming grammar, the permission strings, and the plain-JSON rule — live in [`kernel-api.md`](./kernel-api.md) and are cited, never restated; the words **named error** and **loud** are defined in [`diagnostics.md`](./diagnostics.md). Bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md). Related documents: [`toolbar-contract.md`](./toolbar-contract.md) (this document's structural twin), [`plugins/inspector.md`](./plugins/inspector.md) (the v1 reference provider's brief).
 
-*Consolidates (non-normative): the resolutions of tickets #12 (element identity & serializable data contracts), #14 (reference plugin briefs — service-side `describe`), and #16 (assembly — the `dom.pick-element` dual outcome, resolving #13's flag).*
+*Background (not binding): the resolutions of tickets #12 (element identity & serializable data contracts), #14 (reference plugin briefs — service-side `describe`), and #16 (assembly — the `dom.pick-element` dual outcome, resolving #13's flag).*
 
 ---
 
@@ -16,7 +16,7 @@ This is a **capability contract**: it binds whichever plugin provides the `dom.i
 
 *Consolidates: #12, #16.*
 
-The `dom.inspector` capability owns the vocabulary of **element identity**: what a reference to a live DOM element is, how references are minted and resolved, how element detail is fetched on demand (**hydration**), and how an element is anchored durably across reloads (**element descriptions**). Plugins that work with page elements — an a11y scanner scoping a scan, a feedback plugin anchoring an annotation — interoperate through this contract, not through ad-hoc selectors or shared node globals.
+The `dom.inspector` capability owns **element identity**: what a reference to a live DOM element is, how references are minted and resolved, how element detail is fetched on demand (**hydration**), and how an element is anchored durably across reloads (**element descriptions**). Plugins that work with page elements — an a11y scanner scoping a scan, a feedback plugin anchoring an annotation — interoperate through this contract, not through ad-hoc selectors or shared node globals.
 
 - The provider of `dom.inspector` MUST register a Service named `dom.inspector` (§4). By the capability convention ([kernel spec §10.1](./kernel-api.md#101-declarations)), the capability name coincides with the service name it promises.
 - At most one installed plugin provides `dom.inspector` ([kernel spec §10.2](./kernel-api.md#102-single-provider)). This single-provider rule is what makes references **mutually resolvable**: every reference in a page was minted by the same registry, so a reference obtained from any plugin resolves through the same service for every other plugin.
@@ -51,8 +51,8 @@ interface ElementReference {
 }
 ```
 
-- `kind` is the brand that makes references recognizable inside arbitrary wire payloads (a violations list, a context value) without out-of-band knowledge.
-- `tag` and `label` are **mint-time, display-only snapshots** — by contract they MAY be stale relative to the live node. They exist so element lists and agent narration need no hydration round-trip per element; anything load-bearing MUST come from hydration (§5). The provider SHOULD derive `label` from the element's accessible name or visible text, falling back to the tag name.
+- `kind` is the brand that makes references recognizable inside arbitrary message payloads (a violations list, a context value) without out-of-band knowledge.
+- `tag` and `label` are **mint-time, display-only snapshots** — by contract they MAY be stale relative to the live node. They exist so element lists and agent narration need no hydration round-trip per element; anything you rely on MUST come from hydration (§5). The provider SHOULD derive `label` from the element's accessible name or visible text, falling back to the tag name.
 - The envelope is **closed**: providers MUST NOT add fields, and extra per-element data a plugin wants to ship travels *beside* the reference in that plugin's own payload, never inside it. This keeps the shape schema-stable across the capability's semver.
 - Geometry is deliberately excluded from the envelope: it is volatile, and a snapshot in the envelope would invite trust in stale data. Geometry is a hydration facet (§5.1).
 
@@ -78,7 +78,7 @@ The envelope's JSON Schema is published as a reusable `$defs` entry that plugin 
 }
 ```
 
-The envelope is wire-legal by construction and, like all Command/Event/Context data, is bound unconditionally by the wire-legal rule — see [kernel spec §14](./kernel-api.md#14-the-wire-legal-rule), the one normative home for that contract. The live `Element` node itself is never wire-legal; it crosses plugin boundaries only through the Service (§4).
+The envelope is plain JSON by construction and, like all Command/Event/Context data, is bound unconditionally by the plain-JSON rule — see [kernel spec §14](./kernel-api.md#14-the-plain-json-rule), the one place that defines that contract. The live `Element` node itself is never plain JSON; it crosses plugin boundaries only through the Service (§4).
 
 ## 3. The element registry
 
@@ -96,7 +96,7 @@ Consequently there is **no `release()` API in v1** — consumers have nothing to
 
 Resolution has exactly one failure mode, the **stale reference** error: the node has been collected, or the id is not known to this registry (never minted here, or minted in a previous page session).
 
-The contract deliberately does not distinguish *unknown* from *expired*: WeakRef pruning makes the distinction unreliable exactly when it would matter, so a two-error vocabulary would be a lie. Providers MUST surface staleness as a single [named error](./diagnostics.md#3-named-errors-switchboarderror) — code `stale-reference` ([diagnostics spec §5.3](./diagnostics.md#53-capability-contract-codes)) — from `describe` (§4) and the describe command (§5.2), or as `null` (from `resolve`, §4) — never as a fabricated empty result.
+The contract deliberately does not distinguish *unknown* from *expired*: WeakRef pruning makes the distinction unreliable exactly when it would matter, so a two-error scheme would be a lie. Providers MUST surface staleness as a single [named error](./diagnostics.md#3-named-errors-switchboarderror) — code `stale-reference` ([diagnostics spec §5.3](./diagnostics.md#53-capability-contract-codes)) — from `describe` (§4) and the describe command (§5.2), or as `null` (from `resolve`, §4) — never as a fabricated empty result.
 
 ### 3.3 Detachment is not death
 
@@ -153,7 +153,7 @@ interface DescribeResult {
 
 ### 5.2 The describe command: `dom.describe-element`
 
-The provider MUST register **one** faceted describe command, id `dom.describe-element` — the agent-side door to hydration:
+The provider MUST register **one** faceted describe command, id `dom.describe-element` — the agent-side entry to hydration:
 
 - **Input:** `{ element: string, facets?: Facet[] }`, where `element` is a reference **id** (§2.1; agents copy it from an envelope they hold). `facets` defaults to `[]`.
 - **Result:** `DescribeResult` (§5.1) in one round-trip.
@@ -174,7 +174,7 @@ A completed pick MUST do both of:
 1. **Return** the result to its invoker (in-page `commands.execute` callers await it; agents receive it as the tool result), and
 2. **Write** the picked envelope to the `dom.selected-element` context key,
 
-so the await-the-result flow and the read-the-context flow are both normative. A pick that does not complete with a selection leaves `dom.selected-element` untouched.
+so the await-the-result flow and the read-the-context flow are both binding. A pick that does not complete with a selection leaves `dom.selected-element` untouched.
 
 ### 6.2 The result union
 
@@ -206,7 +206,7 @@ interface ElementDescription {
 }
 ```
 
-- Descriptions are wire-legal data, storable and shippable anywhere ordinary data goes.
+- Descriptions are plain-JSON data, storable and shippable anywhere ordinary data goes.
 - Later minor versions MAY add hint fields; consumers MUST tolerate unknown fields and SHOULD store descriptions whole, so richer hints survive round-tripping through stores that predate them.
 - The two concepts are never conflated: `resolve`/`describe` never accept a description (§4), and a description never contains a reference id.
 
@@ -219,6 +219,6 @@ The boundary rule: *handle for the living page → ElementReference; anchor that
 The capability semver on the `provides` declaration is the only version this contract has; there is no separate document or protocol number.
 
 - **Minor bump:** additive change a v1 consumer can ignore — a new facet (§5.1), new keys inside a facet payload, new `ElementDescription` hint fields, a new command.
-- **Major bump:** any change to the closed envelope (§2.2), removing or reshaping a facet, changing the failure vocabulary (§3.2), or changing the picker union (§6.2).
+- **Major bump:** any change to the closed envelope (§2.2), removing or reshaping a facet, changing the failure names (§3.2), or changing the picker union (§6.2).
 
 Consumers SHOULD require `dom.inspector@^1` and rely only on what this document names; everything else observed about the reference provider is implementation detail with no compatibility promise.

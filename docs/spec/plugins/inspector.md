@@ -1,10 +1,10 @@
 # Reference Plugin Brief: DOM Inspector
 
-**Brief, not contract.** This document describes the v1 reference plugin `reference.dom-inspector` at surface level. The normative material lives in the [`dom.inspector` capability contract](../dom-inspector-contract.md) — element identity, the registry, facets, the picker union are defined **there** and pointed at from here, never restated. This brief carries no version header: briefs describe plugins, contracts bind them. The one version that matters is the capability semver the plugin declares (§2).
+**Brief, not contract.** This document describes the v1 reference plugin `reference.dom-inspector` at surface level. The binding material lives in the [`dom.inspector` capability contract](../dom-inspector-contract.md) — element identity, the registry, facets, the picker union are defined **there** and pointed at from here, never restated. This brief carries no version header: briefs describe plugins, contracts bind them. The one version that matters is the capability semver the plugin declares (§2).
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
-*Consolidates (non-normative): the resolutions of tickets #14 (reference plugin briefs), #12 (element identity), and #16 (assembly — picker dual outcome).*
+*Background (not binding): the resolutions of tickets #14 (reference plugin briefs), #12 (element identity), and #16 (assembly — picker dual outcome).*
 
 ---
 
@@ -38,7 +38,7 @@ definePlugin({
 
 - `provides: ['dom.inspector@1.0.0']` — the capability semver **is** the contract version ([contract §8](../dom-inspector-contract.md#8-versioning)); consumers pin `dom.inspector@^1`.
 - The grant set is a partial bridge family: commands and context cross, no `bridge:events` (the plugin registers no events).
-- `dom:read` is the advisory page-world permission honestly describing what an inspector does ([kernel spec §12.2](../kernel-api.md#122-the-v1-vocabulary--eight-strings)).
+- `dom:read` is the advisory in-page permission honestly describing what an inspector does ([kernel spec §12.2](../kernel-api.md#122-the-eight-v1-permission-strings)).
 
 ## 3. Registered surface
 
@@ -69,7 +69,7 @@ The contract requires a provider-chosen picker deadline strictly shorter than th
 
 *Consolidates: #14.*
 
-`dom.pick-element` is **agent-invocable by design**: agent invokes pick → human clicks an element → the result returns to the invoker *and* the envelope lands in `dom.selected-element` (the dual outcome, [contract §6.1](../dom-inspector-contract.md#61-the-dual-outcome)) → the agent hydrates exactly the facets it wants via `dom.describe-element`. One scenario exercising commands over the bridge, context over the bridge, ElementReference wire-legality, and faceted hydration.
+`dom.pick-element` is **agent-invocable by design**: agent invokes pick → human clicks an element → the result returns to the invoker *and* the envelope lands in `dom.selected-element` (the dual outcome, [contract §6.1](../dom-inspector-contract.md#61-the-dual-outcome)) → the agent hydrates exactly the facets it wants via `dom.describe-element`. One scenario exercising commands over the bridge, context over the bridge, ElementReference JSON shape, and faceted hydration.
 
 ## 7. Recorded constraint
 
@@ -87,4 +87,4 @@ Validates, for the suite's coverage matrix ([index](../README.md)):
 - the **tryGet-present** consumption path;
 - the non-pinning registry and the single `stale reference` failure ([contract §3](../dom-inspector-contract.md#3-the-element-registry));
 - hydration facets **both** in-page (service `describe`) and over the bridge (`dom.describe-element`);
-- ElementReference envelopes as wire-legal Context values and command results.
+- ElementReference envelopes as plain JSON Context values and command results.

@@ -6,18 +6,18 @@ This directory is the complete v1 design: two specifications, two capability con
 
 ## Reading order
 
-Kernel → bridge → contracts → briefs. The kernel spec is first on purpose: it is the one normative home of the three cross-cutting rules — the **naming grammar**, the **permission vocabulary**, and the **wire-legal rule** — that every other document cites by section link and never paraphrases.
+Kernel → bridge → contracts → briefs. The kernel spec is first on purpose: it is the one place that defines the three cross-cutting rules — the **naming grammar**, the **permission strings**, and the **plain-JSON rule** — that every other document cites by section link and never paraphrases.
 
 | # | Document | What it binds | Kind |
 |---|---|---|---|
-| 1 | [`kernel-api.md`](./kernel-api.md) | the framework-agnostic runtime: plugin definition, activation, the four primitives, capabilities, `when`, permissions, storage, wire-legality | specification |
-| 2 | [`bridge-protocol.md`](./bridge-protocol.md) | the page ⇄ agent seam: wire envelope, handshake, snapshot sync, invocation, tail buffer, built-in tools, the MCP edge | specification |
+| 1 | [`kernel-api.md`](./kernel-api.md) | the framework-agnostic runtime: plugin definition, activation, the four primitives, capabilities, `when`, permissions, storage, the plain-JSON rule | specification |
+| 2 | [`bridge-protocol.md`](./bridge-protocol.md) | the page ⇄ agent boundary: message envelope, handshake, snapshot sync, invocation, tail buffer, built-in tools, the MCP edge | specification |
 | 3 | [`toolbar-contract.md`](./toolbar-contract.md) | the `toolbar` capability: items, badges, panels, the mount contract, chrome, a11y patterns P1–P8 | capability contract |
 | 4 | [`dom-inspector-contract.md`](./dom-inspector-contract.md) | the `dom.inspector` capability: ElementReference, the registry, hydration facets, the picker, element descriptions | capability contract |
 | 5 | [`plugins/metrics.md`](./plugins/metrics.md) | the pure producer: headless Web Vitals telemetry | brief |
 | 6 | [`plugins/inspector.md`](./plugins/inspector.md) | the infrastructure provider: v1 reference provider of `dom.inspector` | brief |
 | 7 | [`plugins/scanner.md`](./plugins/scanner.md) | the UI-heavy consumer: on-demand axe-core scans | brief |
-| 8 | [`plugins/feedback.md`](./plugins/feedback.md) | the flagship: annotations and the human → agent → human loop | brief |
+| 8 | [`plugins/feedback.md`](./plugins/feedback.md) | the main one: annotations and the human → agent → human loop | brief |
 
 The division of labor: the kernel spec holds what a contract **is**, the bridge spec holds what the bridge **does about it**, a capability contract holds what its provider must **deliver**, and a brief **describes** a concrete plugin — briefs carry no version header and bind no one.
 
@@ -25,8 +25,8 @@ The division of labor: the kernel spec holds what a contract **is**, the bridge 
 
 | Surface | Version | Where defined |
 |---|---|---|
-| Kernel API (manifest schema and permission vocabulary included) | **v1** | [`kernel-api.md`](./kernel-api.md) |
-| Bridge wire protocol | **`BRIDGE_PROTOCOL_VERSION: 1`** (integer, exact-match-or-refuse) | [`bridge-protocol.md` §2](./bridge-protocol.md#2-versioning-the-handshake-gate) |
+| Kernel API (manifest schema and permission strings included) | **v1** | [`kernel-api.md`](./kernel-api.md) |
+| Bridge protocol | **`BRIDGE_PROTOCOL_VERSION: 1`** (integer, exact-match-or-refuse) | [`bridge-protocol.md` §2](./bridge-protocol.md#2-versioning-the-handshake-gate) |
 | Toolbar placement contract | **`toolbar@1.0.0`** (capability semver) | [`toolbar-contract.md` §2.2](./toolbar-contract.md#22-versioning) |
 | Element identity contract | **`dom.inspector@1.0.0`** (capability semver) | [`dom-inspector-contract.md` §8](./dom-inspector-contract.md#8-versioning) |
 
@@ -41,7 +41,7 @@ Defined by their bridge semantics — Command, Event, and Context can cross to a
 - **Context** — a named, observable *value*: latest state, replayed synchronously to every new observer. The home of "what is true right now."
 - **Service** — a live in-page object shared between plugins. Never serialized, never bridged.
 
-Two boundary rules sort everything: *need the latest value later → Context; only announcing a moment → Event* — and *live object → Service; data → everything else, where data means strict JSON* (the wire-legal rule, [kernel spec §14](./kernel-api.md#14-the-wire-legal-rule)). Storage is kernel infrastructure beside the primitives, not a fifth one ([kernel spec §13](./kernel-api.md#13-storage)); the four-primitive rule was deliberately stress-tested and survived ([`prototypes/primitive-stress-test/`](../../prototypes/primitive-stress-test/README.md)).
+Two boundary rules sort everything: *need the latest value later → Context; only announcing a moment → Event* — and *live object → Service; data → everything else, where data means strict JSON* (the plain-JSON rule, [kernel spec §14](./kernel-api.md#14-the-plain-json-rule)). Storage is kernel infrastructure beside the primitives, not a fifth one ([kernel spec §13](./kernel-api.md#13-storage)); the four-primitive rule was deliberately stress-tested and survived ([`prototypes/primitive-stress-test/`](../../prototypes/primitive-stress-test/README.md)).
 
 ## Coverage matrix
 
@@ -66,15 +66,15 @@ The four reference plugins are chosen so that **every v1 kernel/bridge/storage f
 | `dom:read` / `dom:write` advisories carried honestly | inspector, scanner |
 | Storage: `storage:use`, outbox, defensive reads, reload survival | feedback |
 | Panel mount contract, chrome, badges | scanner, feedback |
-| Wire-legal rule across all three bridgeable primitives | all four |
+| Plain-JSON rule across all three bridgeable primitives | all four |
 | A real third-party npm dependency | scanner (axe-core) |
 
 **Explicit waivers** — features validated by no reference plugin, with the reason on record:
 
 1. **`network:observe` / `network:request`** — first honest carrier is the future `feedback.sink` provider, which sits past the v1 destination.
-2. **Manifest negative behaviors** (unknown-permission tolerance, malformed-manifest rejection) — kernel conformance tests, not plugin behavior.
-3. **Bridge mechanics** (snapshot sync, grace period, active tab, version refusal) — division of labor: validated by the transport spike (`spikes/`, wayfinder #9) and bound normatively in the bridge spec, not exercised by plugin choice.
+2. **Manifest negative behaviors** (unknown-permission tolerance, malformed-manifest rejection) — kernel contract tests, not plugin behavior.
+3. **Bridge mechanics** (snapshot sync, grace period, active tab, version refusal) — division of labor: validated by the transport spike (`spikes/`, wayfinder #9) and bound in the bridge spec, not exercised by plugin choice.
 
-## Provenance
+## Where this came from
 
-*Non-normative.* The suite consolidates the resolutions of the Switchboard formalization map ([wayfinder map #1](https://github.com/bitwhys/switchboard/issues/1)) — thirteen design tickets plus five writing tickets. Each document carries its own *Consolidates* lines; the per-decision detail lives on the closed tickets.
+*Not binding.* The suite consolidates the resolutions of the Switchboard formalization map ([wayfinder map #1](https://github.com/bitwhys/switchboard/issues/1)) — thirteen design tickets plus five writing tickets. Each document carries its own *Consolidates* lines; the per-decision detail lives on the closed tickets.

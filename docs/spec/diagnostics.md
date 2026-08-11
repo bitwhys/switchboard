@@ -1,14 +1,14 @@
 # Switchboard Diagnostics Specification
 
-**Version: Kernel API v1.** The diagnostic entry shape, the severity vocabulary, and the kernel- and bridge-owned error codes are kernel API surface and version with it ([kernel spec §15](./kernel-api.md#15-versioning-and-forward-compatibility)); a capability contract's codes version under that capability's semver (§5.3). There is no separate diagnostics version.
+**Version: Kernel API v1.** The diagnostic entry shape, the severity levels, and the kernel- and bridge-owned error codes are kernel API surface and version with it ([kernel spec §15](./kernel-api.md#15-versioning-and-forward-compatibility)); a capability contract's codes version under that capability's semver (§5.3). There is no separate diagnostics version.
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
-TypeScript signatures and typed-JSON shape blocks in this document are **normative**. Prose qualifies them; it does not override them.
+TypeScript signatures and typed-JSON shape blocks in this document are **binding**. Prose qualifies them; it does not override them.
 
-This document is the one normative home for what the rest of the suite means by **"loud"**, **"named error"**, and **"dev-mode warning"** — the diagnostics channel, the entry shape, the error-code table, dev mode, and the node-side stderr form. Every other document in the suite uses those words as links to this one and MUST NOT redefine them. Related documents: [`kernel-api.md`](./kernel-api.md), [`bridge-protocol.md`](./bridge-protocol.md), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
+This document is the one place that defines what the rest of the suite means by **"loud"**, **"named error"**, and **"dev-mode warning"** — the diagnostics channel, the entry shape, the error-code table, dev mode, and the node-side stderr form. Every other document in the suite uses those words as links to this one and MUST NOT redefine them. Related documents: [`kernel-api.md`](./kernel-api.md), [`bridge-protocol.md`](./bridge-protocol.md), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
 
-*Consolidates (non-normative): the resolution of ticket #37 (the diagnostics model); the `EADDRINUSE` posture of the bridge-port research (#40).*
+*Background (not binding): the resolution of ticket #37 (the diagnostics model); the `EADDRINUSE` behavior of the bridge-port research (#40).*
 
 ---
 
@@ -18,7 +18,7 @@ Every specification in this suite demands that failures be "loud" and that certa
 
 The channel is a reporting surface, never control flow: subscribing, unsubscribing, or disabling the console reporter changes what is *observed*, not what *happens*. Thrown errors are control flow and can never be suppressed (§2.1).
 
-The channel exists **page-side only**. The bridge's node side uses the same vocabulary over a different transport — stderr JSON lines (§8).
+The channel exists **page-side only**. The bridge's node side uses the same codes over a different transport — stderr JSON lines (§8).
 
 ## 2. Loudness: the two severities
 
@@ -52,7 +52,7 @@ class SwitchboardError extends Error {
 }
 ```
 
-The `code` is the error's identity: conformance tests MUST match on `code` and MUST NOT match on message prose. `message` exists for humans and MAY change without notice.
+The `code` is the error's identity: contract tests MUST match on `code` and MUST NOT match on message prose. `message` exists for humans and MAY change without notice.
 
 ## 4. The diagnostic entry
 
@@ -77,7 +77,7 @@ interface Diagnostic {
 
 `source` names the emitter and is **stamped by the kernel — never taken from the caller**: for `api.diagnostics.emit` (§6.2) it is the calling plugin's id; for the kernel's own diagnostics it is `'kernel'`; the page-side bridge client emits as `'bridge'`; the application developer's own emissions (if any) as `'host'`. A plugin cannot speak as anyone but itself.
 
-The three words `kernel`, `bridge`, and `host` are **reserved as sources**: a plugin whose manifest `id` is one of them MUST be rejected with a loud `reserved-namespace` error (the same posture as `switchboard.*`, [kernel spec §2.4](./kernel-api.md#24-prefixes-and-the-reserved-namespace)).
+The three words `kernel`, `bridge`, and `host` are **reserved as sources**: a plugin whose manifest `id` is one of them MUST be rejected with a loud `reserved-namespace` error (the same rule as `switchboard.*`, [kernel spec §2.4](./kernel-api.md#24-prefixes-and-the-reserved-namespace)).
 
 ### 4.2 `plugin` is the responsible party
 
@@ -108,18 +108,18 @@ A `code` is a single lowercase kebab segment (`[a-z0-9-]+`), compared exactly. T
 | `duplicate-kernel` | warning | a second kernel announced while a first is live; first live kernel wins | [kernel §17.2](./kernel-api.md#172-first-live-kernel-wins) |
 | `unknown-manifest-field` | warning | an unknown manifest field, tolerated | [kernel §3.3](./kernel-api.md#33-manifest-validation) |
 | `unknown-activation-hint` | warning | an unknown activation hint, behaviorally ignored | [kernel §4.1](./kernel-api.md#41-activation-hints) |
-| `unknown-permission` | warning | an unknown permission string, tolerated, granting nothing | [kernel §12.2](./kernel-api.md#122-the-v1-vocabulary--eight-strings) |
+| `unknown-permission` | warning | an unknown permission string, tolerated, granting nothing | [kernel §12.2](./kernel-api.md#122-the-eight-v1-permission-strings) |
 | `manifest-drift` | warning | a registered service name appears in no plugin's `provides` | [kernel §10.4](./kernel-api.md#104-manifest-drift-warning) |
 
 ### 5.2 Bridge codes
 
 | Code | Severity | Condition | Defined by |
 |---|---|---|---|
-| `wire-illegal` | error | a value failed strict JSON serialization at the wire, attributed to the acting plugin | [bridge §12](./bridge-protocol.md#12-the-wire-legal-enforcement-point) |
-| `malformed-message` | error | a malformed wire message | [bridge §4.3](./bridge-protocol.md#43-tolerance-posture) |
+| `wire-illegal` | error | a value failed strict JSON serialization at the bridge, attributed to the acting plugin | [bridge §12](./bridge-protocol.md#12-where-the-plain-json-rule-is-enforced) |
+| `malformed-message` | error | a malformed message | [bridge §4.3](./bridge-protocol.md#43-tolerating-unknown-input) |
 | `protocol-mismatch` | error | the handshake was rejected on protocol-version mismatch; remedy: reload the tab | [bridge §5.3](./bridge-protocol.md#53-rejection) |
 | `port-in-use` | error | node-side (§8): the bridge's port is already bound (`EADDRINUSE`); the bridge MUST refuse to serve rather than scan — the hosting dev server survives | [adapter contract §6.3](./adapter-contract.md#63-eaddrinuse-fail-loud-never-scan) |
-| `unknown-wire-data` | warning | an unknown wire message type or field, tolerated | [bridge §4.3](./bridge-protocol.md#43-tolerance-posture) |
+| `unknown-wire-data` | warning | an unknown message type or field, tolerated | [bridge §4.3](./bridge-protocol.md#43-tolerating-unknown-input) |
 
 ### 5.3 Capability-contract codes
 
@@ -173,7 +173,7 @@ interface DiagnosticsApi {
 ```
 
 - **Emit** exists because service-providing plugins do their own validation: the toolbar's contract-mandated loud rejection of a malformed contribution happens inside an ordinary service call, where the kernel is not in the middle. `emit` is the *emission half* only — a plugin raising a loud error additionally throws its own `SwitchboardError` (§2.1) from the failing call; `emit` never throws. The kernel stamps `source` with the calling plugin's id, unconditionally.
-- **Subscribe** has **full cross-plugin visibility**: every subscriber sees every entry, whoever emitted it — consistent with v1's trusted-plugin posture ([kernel spec §1](./kernel-api.md#1-scope)), and sufficient for a future diagnostics panel with no new API.
+- **Subscribe** has **full cross-plugin visibility**: every subscriber sees every entry, whoever emitted it — consistent with v1's trusted-plugin model ([kernel spec §1](./kernel-api.md#1-scope)), and sufficient for a future diagnostics panel with no new API.
 - Warning emissions via `emit` obey dev mode like every other warning (§7): with dev off they are dropped, not delivered.
 
 ### 6.3 The default console reporter
@@ -204,10 +204,10 @@ When dev is **off**: warnings (§2.2) are not emitted, and the console reporter 
 
 The channel is page-side only. On the bridge's node side, **"loud" means the diagnostic written to stderr as JSON lines**: one JSON object per line, carrying the same shape as §4 — `severity`, `code`, `source`, `plugin`, `subject`, `message`, `timestamp` — and the process additionally crashing where a spec says so (e.g. `port-in-use`, §5.2).
 
-One vocabulary, two transports; there is no second normative home. How adapters surface or relay the stderr stream is adapter-contract territory, not this document's.
+One code set, two transports; there is no second definition. How adapters surface or relay the stderr stream is the adapter contract's business, not this document's.
 
 ## 9. Versioning and forward compatibility
 
 - **New codes and new severities are additive.** Kernel and bridge codes land as kernel API semver events; capability-contract codes land as minor bumps of their capability (§5.3). Subscribers MUST tolerate entries with unknown `code` or `severity` values.
-- **The entry shape evolves additively**: new optional fields MAY appear; subscribers MUST tolerate unknown fields — the suite's uniform posture ([kernel spec §15](./kernel-api.md#15-versioning-and-forward-compatibility)).
+- **The entry shape evolves additively**: new optional fields MAY appear; subscribers MUST tolerate unknown fields — the suite's uniform rule ([kernel spec §15](./kernel-api.md#15-versioning-and-forward-compatibility)).
 - A `code`, once published, is **stable**: renaming or removing one is a breaking change of its owning surface.
