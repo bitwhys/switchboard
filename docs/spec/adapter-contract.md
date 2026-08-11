@@ -6,7 +6,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in
 
 TypeScript signatures and typed-JSON shape blocks in this document are **binding**. Prose qualifies them; it does not override them.
 
-An **adapter** is the package that hosts the bridge inside a development server and connects a page kernel to it — `@switchboard-dev/adapter-vite`, `@switchboard-dev/adapter-next`, or a third-party equivalent for another host. This document is the one place that defines the obligations any adapter must meet on **both paths** — the agent path (the MCP edge) and the page path — plus the binding commitments of the two shipped adapters. §§2–9 bind every adapter equally, shipped or third-party; §10 and §11 bind the named packages. Related documents: [`bridge-protocol.md`](./bridge-protocol.md), [`kernel-api.md`](./kernel-api.md), [`diagnostics.md`](./diagnostics.md).
+An **adapter** is the package that hosts the bridge inside a development server and connects a page kernel to it — `@switchboard-dev/adapter-vite`, `@switchboard-dev/adapter-next`, or a third-party equivalent for another host. This document is the one place that defines the obligations any adapter must meet on both paths, the agent path (the MCP edge) and the page path, plus the binding commitments of the two shipped adapters. §§2–9 bind every adapter equally, shipped or third-party; §10 and §11 bind the named packages. Related documents: [`bridge-protocol.md`](./bridge-protocol.md), [`kernel-api.md`](./kernel-api.md), [`diagnostics.md`](./diagnostics.md).
 
 *Background (not binding): the resolution of ticket #43; §6 of the [adapter-next hosting research](../research/adapter-next-hosting.md); §§6–8 of the [bridge default-port research](../research/bridge-default-port.md) (#40); the channel-handle interface and ownership split of #38; the host-integration patterns of #44; the `port-in-use` interpretation of #73.*
 
@@ -16,22 +16,22 @@ An **adapter** is the package that hosts the bridge inside a development server 
 
 ### 1.1 The split
 
-The page half of the Switchboard protocol — handshake, snapshot building, grant filtering, the message loop, invoke/cancel/context/event handling, plain-JSON checking — is implemented **once**, by the page client that ships as the browser-only subpath export of `@switchboard-dev/bridge-mcp`. An adapter MUST inject that page client rather than reimplement any part of it: the protocol is MUST-heavy, and per-adapter copies were explicitly rejected (#38).
+The page half of the Switchboard protocol — handshake, snapshot building, grant filtering, the message loop, invoke/cancel/context/event handling, plain-JSON checking — is implemented once, by the page client that ships as the browser-only subpath export of `@switchboard-dev/bridge-mcp`. An adapter MUST inject that page client rather than reimplement any part of it: the protocol is MUST-heavy, and per-adapter copies were explicitly rejected (#38).
 
 What remains is the adapter's, and it is exactly this contract:
 
 - **mounting the node-side bridge** in the dev-server process (§2, §6);
 - **providing and securing the page channel** (§3, §4);
 - **delivering the page bootstrap** so the app writes zero bridge code (§8);
-- **configuration** (§5, §9) and **lifecycle** (§7).
+- **configuration** (§5, §9) and lifecycle (§7).
 
 ### 1.2 Development only
 
-v1 adapters are development tools. An adapter MUST be **inert outside development**: no listener, no injected bootstrap, no bridge code in production bundles (§7.1). The production model arrives later through the reserved `auth` field ([bridge §15.4](./bridge-protocol.md#154-the-reserved-auth-field)), not by running a v1 adapter in production.
+v1 adapters are development tools. An adapter MUST be inert outside development: no listener, no injected bootstrap, no bridge code in production bundles (§7.1). The production model arrives later through the reserved `auth` field ([bridge §15.4](./bridge-protocol.md#154-the-reserved-auth-field)), not by running a v1 adapter in production.
 
 ## 2. Topology: the two paths
 
-One bridge — one registry, one session map — per dev-server process ([bridge §1](./bridge-protocol.md#1-scope-and-topology)).
+One bridge per dev-server process, with one registry and one session map ([bridge §1](./bridge-protocol.md#1-scope-and-topology)).
 
 ### 2.1 The agent path lives on the bridge port
 
@@ -41,21 +41,21 @@ The agent-facing MCP endpoint MUST be served at
 http://localhost:<bridge port>/mcp
 ```
 
-on the **dedicated bridge port** (§6) — never on the application's own port. The agent's URL is a hand-written literal in an MCP client config, and app ports drift (`next dev` silently increments off 3000, Vite off 5173): an agent path riding the app port breaks every configured agent the first time the port moves. One fixed path means one documented `.mcp.json` snippet for every Switchboard project, regardless of framework.
+on the dedicated bridge port (§6) — never on the application's own port. The agent's URL is a hand-written literal in an MCP client config, and app ports drift (`next dev` silently increments off 3000, Vite off 5173): an agent path riding the app port breaks every configured agent the first time the port moves. One fixed path means one documented `.mcp.json` snippet for every Switchboard project, regardless of framework.
 
 ### 2.2 The page channel is the adapter's choice
 
-The page channel is whatever the adapter can best provide in its host — an existing dev-server socket, a WebSocket on the bridge port, an in-process pair in tests — so long as it meets [bridge §4.2](./bridge-protocol.md#42-channel-requirements) (ordered, reliable, bidirectional, disconnect-signaling) and the obligations of §3 and §4 below. The shipped choices: adapter-vite rides Vite's HMR WebSocket (§10.2); adapter-next mounts `/ws` on the bridge port (§11.3).
+The page channel is whatever the adapter can best provide in its host (an existing dev-server socket, a WebSocket on the bridge port, an in-process pair in tests), so long as it meets [bridge §4.2](./bridge-protocol.md#42-channel-requirements) (ordered, reliable, bidirectional, disconnect-signaling) and the obligations of §3 and §4 below. The shipped choices: adapter-vite rides Vite's HMR WebSocket (§10.2); adapter-next mounts `/ws` on the bridge port (§11.3).
 
 ### 2.3 Binding
 
-The bridge port MUST bind loopback only, and SHOULD bind **both** loopback literals (`127.0.0.1` and `::1`) per [bridge §15.1](./bridge-protocol.md#151-binding); the `::1` bind is best-effort on IPv6-less hosts. Documentation tells agents to dial `localhost`.
+The bridge port MUST bind loopback only, and SHOULD bind both loopback literals (`127.0.0.1` and `::1`) per [bridge §15.1](./bridge-protocol.md#151-binding); the `::1` bind is best-effort on IPv6-less hosts. Documentation tells agents to dial `localhost`.
 
 ## 3. The page channel
 
 ### 3.1 Connection handles
 
-The adapter hands the page client the channel as **single-use connection handles**:
+The adapter hands the page client the channel as single-use connection handles:
 
 ```ts
 interface WireConnection {
@@ -65,7 +65,7 @@ interface WireConnection {
 }
 ```
 
-One handle is **one channel lifetime**. The adapter MUST hand over a fresh handle for every established connection and MUST NOT reuse a handle across connections. The page client opens every handle with `hello` → snapshot, which makes fresh-handshake-per-connection ([bridge §14.3](./bridge-protocol.md#143-reconnection)) structural: nothing can buffer across connections, so hello-first cannot be violated by interface shape.
+One handle is one channel lifetime. The adapter MUST hand over a fresh handle for every established connection and MUST NOT reuse a handle across connections. The page client opens every handle with `hello` → snapshot, which makes fresh-handshake-per-connection ([bridge §14.3](./bridge-protocol.md#143-reconnection)) structural: nothing can buffer across connections, so hello-first cannot be violated by interface shape.
 
 ### 3.2 Open-only handover
 
@@ -79,7 +79,7 @@ A handle MUST NOT be handed to the page client before the underlying channel act
 
 After a channel loss, while the page lives, the adapter (or its page-side bootstrap):
 
-- MUST re-establish the channel automatically — no user action, no page reload requirement of its own;
+- MUST re-establish the channel automatically, with no user action and no page reload requirement of its own;
 - MUST keep retrying indefinitely — dev servers come back, and a bridge that gave up is indistinguishable from a broken one;
 - MUST back off between attempts enough not to busy-spin the tab.
 
@@ -95,14 +95,14 @@ The threat model is [bridge §15](./bridge-protocol.md#15-security-model-auth-v1
 
 ### 4.1 The page-path obligation
 
-Per [bridge §15.3](./bridge-protocol.md#153-page-path-channel-security), the page channel MUST be protected by **either**:
+Per [bridge §15.3](./bridge-protocol.md#153-page-path-channel-security), the page channel MUST be protected by either:
 
-- **(a)** riding a channel with its own handshake protection — Vite's post-CVE token handshake qualifies; **or**
+- **(a)** riding a channel with its own handshake protection — Vite's post-CVE token handshake qualifies; or
 - **(b)** enforcing an Origin allowlist or token check itself on the handshake. Browsers always send `Origin` on WebSocket upgrades (RFC 6455) and never enforce anything — the server must.
 
 ### 4.2 The default policy
 
-Where the adapter enforces origins itself (path (b)), the default allowlist MUST be: **any loopback origin** — `localhost`, `127.0.0.1`, `[::1]`, any port, any scheme. The application's own port is not reliably knowable from the adapter's mount point and drifts anyway; a wrongly pinned origin bricks the channel, while loopback-any still refuses every origin a malicious website can present. The agent path additionally admits absent-Origin requests (terminal agents) per [bridge §15.2](./bridge-protocol.md#152-agent-path-origin-allowlist).
+Where the adapter enforces origins itself (path (b)), the default allowlist MUST be: any loopback origin — `localhost`, `127.0.0.1`, `[::1]`, any port, any scheme. The application's own port is not reliably knowable from the adapter's mount point and drifts anyway; a wrongly pinned origin bricks the channel, while loopback-any still refuses every origin a malicious website can present. The agent path additionally admits absent-Origin requests (terminal agents) per [bridge §15.2](./bridge-protocol.md#152-agent-path-origin-allowlist).
 
 **One policy object governs both paths** of the bridge port: an origin admitted at one path is admitted at the other. Strict origin pinning MUST be available as configuration (§9); it narrows the default, never widens the refusals.
 
@@ -112,17 +112,17 @@ Where the adapter enforces origins itself (path (b)), the default allowlist MUST
 
 ## 5. Timeouts
 
-The bridge bounds every invocation — **default 60 seconds**, no per-command override in v1 ([bridge §7.4](./bridge-protocol.md#74-bridge-timeout)). "Configurable where the application developer configures the adapter" means here: every adapter MUST expose `invokeTimeoutMs` in its options (§9) and pass it through to the bridge. Adapters MAY likewise expose the bridge's other tunables (grace period, tail-buffer size) under the bridge's own option names; their defaults are the bridge spec's.
+The bridge bounds every invocation — default 60 seconds, no per-command override in v1 ([bridge §7.4](./bridge-protocol.md#74-bridge-timeout)). "Configurable where the application developer configures the adapter" means here: every adapter MUST expose `invokeTimeoutMs` in its options (§9) and pass it through to the bridge. Adapters MAY likewise expose the bridge's other tunables (grace period, tail-buffer size) under the bridge's own option names; their defaults are the bridge spec's.
 
 ## 6. The bridge port
 
 ### 6.1 Default and fallbacks
 
-The default bridge port is **7654**; the documented fallbacks are **7655** and **7656** (all inside IANA's explicitly-Unassigned 7649–7662 block — evidence in [the port research](../research/bridge-default-port.md)). The fallbacks are for **humans to configure** when running two Switchboard projects at once. They are never tried automatically.
+The default bridge port is 7654; the documented fallbacks are 7655 and 7656 (all inside IANA's explicitly-Unassigned 7649–7662 block — evidence in [the port research](../research/bridge-default-port.md)). The fallbacks are for humans to configure when running two Switchboard projects at once. They are never tried automatically.
 
 ### 6.2 One variable drives both sides
 
-The port is the one knob that lives in two places — the adapter and the agent's MCP client config — so the override mechanism must move both together. `SWITCHBOARD_PORT` is that mechanism. The documented `.mcp.json` snippet is:
+The port is the one knob that lives in two places, the adapter and the agent's MCP client config, so the override mechanism must move both together. `SWITCHBOARD_PORT` is that mechanism. The documented `.mcp.json` snippet is:
 
 ```jsonc
 {
@@ -135,17 +135,17 @@ The port is the one knob that lives in two places — the adapter and the agent'
 }
 ```
 
-Port precedence is therefore **environment > code option > 7654**: `SWITCHBOARD_PORT`, when set, MUST win over a `port` passed in adapter options. This inverts conventional precedence deliberately — the env var is the only channel that also updates what agents dial, so nothing may silently override it on one side only. The code option remains useful as a project-pinned default committed alongside the fallback ports. (adapter-next adds a public mirror for the page side — §11.5.)
+Port precedence is therefore environment > code option > 7654: `SWITCHBOARD_PORT`, when set, MUST win over a `port` passed in adapter options. This inverts conventional precedence deliberately — the env var is the only channel that also updates what agents dial, so nothing may silently override it on one side only. The code option remains useful as a project-pinned default committed alongside the fallback ports. (adapter-next adds a public mirror for the page side, §11.5.)
 
 ### 6.3 `EADDRINUSE`: fail loud, never scan
 
 A bridge that silently binds a different port leaves every configured agent pointing at the old one — "up" and broken, with no error anywhere the developer looks. When the bridge port is taken:
 
-1. **Bounded same-port retry first.** A host that re-forks its dev child (Next does, on config edits and memory pressure) can race the old socket's release. The adapter SHOULD retry the **same** port a few times over a short window (order of one second total). This is not a scan: every attempt is for the configured port.
+1. **Bounded same-port retry first.** A host that re-forks its dev child (Next does, on config edits and memory pressure) can race the old socket's release. The adapter SHOULD retry the same port a few times over a short window (order of one second total). This is not a scan: every attempt is for the configured port.
 2. **Probe to diagnose, never to reuse.** The adapter SHOULD identity-probe the holder to sharpen its message (is it another Switchboard bridge, or a stranger?). It MUST NOT attach to a sibling bridge it finds: a bridge is bound to one page kernel, and reusing another project's bridge would serve that project's agents the wrong page.
 3. **Then fail loud.** Emit the [`port-in-use`](./diagnostics.md#52-bridge-codes) diagnostic with a message naming all three remedies: another Switchboard project holds the port → set `SWITCHBOARD_PORT` for one of them (fallbacks 7655/7656); a stranger process holds it → name the port so the holder can be found; or pick any other free port.
 4. **Never bind a different port.** Under no circumstances does the adapter select another port on its own.
-5. **The dev server survives.** The failure MUST NOT take the host dev server down: an app developer who does not care about Switchboard right now must still be able to work. `startBridgeServer` emits the diagnostic and throws; the adapter catches `port-in-use` — specifically, after its bounded retry — refuses to start the bridge, and lets the host continue. The error is not swallowed or downgraded: the stderr diagnostic has already fired at full loudness, and the broken-agent path stays diagnosable (agent can't connect → the terminal says exactly why).
+5. **The dev server survives.** The failure MUST NOT take the host dev server down: an app developer who does not care about Switchboard right now must still be able to work. `startBridgeServer` emits the diagnostic and throws; the adapter catches `port-in-use` after its bounded retry, refuses to start the bridge, and lets the host continue. The error is not swallowed or downgraded: the stderr diagnostic has already fired at full loudness, and the broken-agent path stays diagnosable (agent can't connect → the terminal says exactly why).
 
 *Correction carried by this document:* diagnostics §5.2's `port-in-use` row read "the process MUST exit rather than scan" while this contract was forthcoming; the settled obligation is **the bridge MUST refuse to serve rather than scan** — the hosting process lives.
 
@@ -153,11 +153,11 @@ A bridge that silently binds a different port leaves every configured agent poin
 
 ### 7.1 Inert outside dev
 
-An adapter MUST start nothing — no listener, no bootstrap injection — unless its host is running a development server. In particular, a production build of the host app (`vite build`, `next build`, either bundler) MUST never start the bridge listener, and production bundles MUST NOT contain the bootstrap or page client. The app-side dev gates of the [host-integration pattern](./kernel-api.md#18-constructing-the-kernel-createswitchboard) drop the kernel and plugins; the adapter's own inertness drops everything else.
+An adapter MUST start nothing (no listener, no bootstrap injection) unless its host is running a development server. In particular, a production build of the host app (`vite build`, `next build`, either bundler) MUST never start the bridge listener, and production bundles MUST NOT contain the bootstrap or page client. The app-side dev gates of the [host-integration pattern](./kernel-api.md#18-constructing-the-kernel-createswitchboard) drop the kernel and plugins; the adapter's own inertness drops everything else.
 
 ### 7.2 Idempotency
 
-Hosts re-initialize: Next re-forks its dev child and runs multi-runtime instrumentation passes; plugins can be evaluated more than once. An adapter MUST start **at most one** bridge per process (a `globalThis` guard is the canonical mechanism) and MUST tolerate repeated initialization without error or duplicate listeners.
+Hosts re-initialize: Next re-forks its dev child and runs multi-runtime instrumentation passes; plugins can be evaluated more than once. An adapter MUST start at most one bridge per process (a `globalThis` guard is the canonical mechanism) and MUST tolerate repeated initialization without error or duplicate listeners.
 
 ### 7.3 Nothing persists
 
@@ -167,7 +167,7 @@ The bridge requires no persistence for correctness ([bridge §14.4](./bridge-pro
 
 ### 8.1 Zero bridge code in the app
 
-The adapter MUST deliver a **bootstrap** module into the page in dev. The bootstrap subscribes to the [kernel handoff](./kernel-api.md#17-the-kernel-handoff), and when a kernel announces itself, attaches the page client (over §3 handles) to it. The app writes zero bridge code: install the adapter, call `createSwitchboard()`, connected — order-independent, because the handoff is push/subscribe both ways.
+The adapter MUST deliver a bootstrap module into the page in dev. The bootstrap subscribes to the [kernel handoff](./kernel-api.md#17-the-kernel-handoff), and when a kernel announces itself, attaches the page client (over §3 handles) to it. The app writes zero bridge code: install the adapter, call `createSwitchboard()`, connected — order-independent, because the handoff is push/subscribe both ways.
 
 On [retraction](./kernel-api.md#173-retraction) (`dispose()` — the HMR escape) the bootstrap MUST drop the connection; a later announce re-attaches. Direct use of the page client remains an escape hatch for exotic setups, but no supported integration requires it.
 
@@ -253,7 +253,7 @@ Two exports:
 
 ### 11.5 The page-side port mirror
 
-The page bundle cannot read `SWITCHBOARD_PORT`; Next inlines only `NEXT_PUBLIC_*` variables. The documented override variable on Next is therefore **`NEXT_PUBLIC_SWITCHBOARD_PORT`** — readable by both sides, so it stays the one variable driving bridge, page, and (via `${NEXT_PUBLIC_SWITCHBOARD_PORT:-7654}` in `.mcp.json`) agents. `register()` reads `NEXT_PUBLIC_SWITCHBOARD_PORT`, then `SWITCHBOARD_PORT`, then the code option, then 7654 — and MUST emit a loud warning when `SWITCHBOARD_PORT` is set but the public mirror is absent or different, naming the fix: the page would otherwise dial the wrong port with no error anywhere.
+The page bundle cannot read `SWITCHBOARD_PORT`; Next inlines only `NEXT_PUBLIC_*` variables. The documented override variable on Next is therefore `NEXT_PUBLIC_SWITCHBOARD_PORT` — readable by both sides, so it stays the one variable driving bridge, page, and (via `${NEXT_PUBLIC_SWITCHBOARD_PORT:-7654}` in `.mcp.json`) agents. `register()` reads `NEXT_PUBLIC_SWITCHBOARD_PORT`, then `SWITCHBOARD_PORT`, then the code option, then 7654 — and MUST emit a loud warning when `SWITCHBOARD_PORT` is set but the public mirror is absent or different, naming the fix: the page would otherwise dial the wrong port with no error anywhere.
 
 ## 12. Third-party adapters
 

@@ -1,12 +1,12 @@
 # Switchboard `dom.inspector` Capability Contract
 
-**Version: `dom.inspector@1.0.0`.** The capability's semver **is** the contract version: a provider declares `provides: ["dom.inspector@1.0.0"]`, consumers pin ranges with `requires: ["dom.inspector@^1"]` ([kernel spec §10.1](./kernel-api.md#101-declarations)). The version is decoupled from any npm package version — the same approach as the `toolbar` capability. Everything in this document — the envelope, the registry semantics, the facet menu, the command surfaces — versions under this semver (§8).
+**Version: `dom.inspector@1.0.0`.** The capability's semver is the contract version: a provider declares `provides: ["dom.inspector@1.0.0"]`, consumers pin ranges with `requires: ["dom.inspector@^1"]` ([kernel spec §10.1](./kernel-api.md#101-declarations)). The version is decoupled from any npm package version — the same approach as the `toolbar` capability. Everything in this document (the envelope, the registry semantics, the facet menu, the command surfaces) versions under this semver (§8).
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
 TypeScript signatures and typed-JSON shape blocks in this document are **binding**. Prose qualifies them; it does not override them.
 
-This is a **capability contract**: it binds whichever plugin provides the `dom.inspector` capability, and it is the one place that defines element identity in Switchboard. The kernel spec deliberately contains no DOM terms ([kernel spec §1](./kernel-api.md#1-scope)); the cross-cutting rules this document leans on — the naming grammar, the permission strings, and the plain-JSON rule — live in [`kernel-api.md`](./kernel-api.md) and are cited, never restated; the words **named error** and **loud** are defined in [`diagnostics.md`](./diagnostics.md). Bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md). Related documents: [`toolbar-contract.md`](./toolbar-contract.md) (this document's structural twin), [`plugins/inspector.md`](./plugins/inspector.md) (the v1 reference provider's brief).
+This is a capability contract: it binds whichever plugin provides the `dom.inspector` capability, and it is the one place that defines element identity in Switchboard. The kernel spec deliberately contains no DOM terms ([kernel spec §1](./kernel-api.md#1-scope)); the cross-cutting rules this document leans on, namely the naming grammar, the permission strings, and the plain-JSON rule — live in [`kernel-api.md`](./kernel-api.md) and are cited, never restated; the words **named error** and **loud** are defined in [`diagnostics.md`](./diagnostics.md). Bridge exposure mechanics live in [`bridge-protocol.md`](./bridge-protocol.md). Related documents: [`toolbar-contract.md`](./toolbar-contract.md) (this document's structural twin), [`plugins/inspector.md`](./plugins/inspector.md) (the v1 reference provider's brief).
 
 *Background (not binding): the resolutions of tickets #12 (element identity & serializable data contracts), #14 (reference plugin briefs — service-side `describe`), and #16 (assembly — the `dom.pick-element` dual outcome, resolving #13's flag).*
 
@@ -16,10 +16,10 @@ This is a **capability contract**: it binds whichever plugin provides the `dom.i
 
 *Consolidates: #12, #16.*
 
-The `dom.inspector` capability owns **element identity**: what a reference to a live DOM element is, how references are minted and resolved, how element detail is fetched on demand (**hydration**), and how an element is anchored durably across reloads (**element descriptions**). Plugins that work with page elements — an a11y scanner scoping a scan, a feedback plugin anchoring an annotation — interoperate through this contract, not through ad-hoc selectors or shared node globals.
+The `dom.inspector` capability owns element identity: what a reference to a live DOM element is, how references are minted and resolved, how element detail is fetched on demand (hydration), and how an element is anchored durably across reloads (element descriptions). Plugins that work with page elements, such as an a11y scanner scoping a scan or a feedback plugin anchoring an annotation, interoperate through this contract, not through ad-hoc selectors or shared node globals.
 
 - The provider of `dom.inspector` MUST register a Service named `dom.inspector` (§4). By the capability convention ([kernel spec §10.1](./kernel-api.md#101-declarations)), the capability name coincides with the service name it promises.
-- At most one installed plugin provides `dom.inspector` ([kernel spec §10.2](./kernel-api.md#102-single-provider)). This single-provider rule is what makes references **mutually resolvable**: every reference in a page was minted by the same registry, so a reference obtained from any plugin resolves through the same service for every other plugin.
+- At most one installed plugin provides `dom.inspector` ([kernel spec §10.2](./kernel-api.md#102-single-provider)). This single-provider rule is what makes references mutually resolvable: every reference in a page was minted by the same registry, so a reference obtained from any plugin resolves through the same service for every other plugin.
 - Element-anchored plugins acquire an honest dependency on the capability: `requires: ["dom.inspector@^1"]` for a hard dependency, or `services.tryGet("dom.inspector")` for a soft one ([kernel spec §9](./kernel-api.md#9-services)).
 - All registered names in this contract (`dom.inspector`, `dom.describe-element`, `dom.pick-element`, `dom.selected-element`) follow the kernel name grammar ([kernel spec §2](./kernel-api.md#2-naming)).
 
@@ -29,18 +29,18 @@ Agent-facing behavior in this contract (§5.2, §6) additionally depends on the 
 
 *Consolidates: #12.*
 
-An **ElementReference** is a registry-minted, opaque handle to a live DOM node *instance*, valid only within the page session that minted it.
+An ElementReference is a registry-minted, opaque handle to a live DOM node *instance*, valid only within the page session that minted it.
 
 ### 2.1 Identity
 
-- Identity is the node **instance**, not the logical element: if a framework remounts a component, the old node's reference goes stale and the new node gets a fresh identity. Heuristic "same logical element" re-binding is never performed on references — that job belongs exclusively to element descriptions (§7).
-- References are **strictly live-session**: a reference is meaningful only to the registry that minted it, and only while that page session lives. Reference ids MUST NOT repeat across page sessions, so a reference carried over a reload can never silently resolve to the wrong node — it fails as stale (§3.2).
+- Identity is the node instance, not the logical element: if a framework remounts a component, the old node's reference goes stale and the new node gets a fresh identity. Heuristic "same logical element" re-binding is never performed on references — that job belongs exclusively to element descriptions (§7).
+- References are strictly live-session: a reference is meaningful only to the registry that minted it, and only while that page session lives. Reference ids MUST NOT repeat across page sessions, so a reference carried over a reload can never silently resolve to the wrong node — it fails as stale (§3.2).
 - `id` is an opaque string. Consumers MUST NOT parse it or attach meaning to its format.
 - Minting the same live node again while it remains registered MUST yield the same `id`, so two references to one node are comparable by `id` equality.
 
 ### 2.2 The envelope
 
-A reference travels as a **closed four-field display envelope**:
+A reference travels as a closed four-field display envelope:
 
 ```ts
 interface ElementReference {
@@ -52,8 +52,8 @@ interface ElementReference {
 ```
 
 - `kind` is the brand that makes references recognizable inside arbitrary message payloads (a violations list, a context value) without out-of-band knowledge.
-- `tag` and `label` are **mint-time, display-only snapshots** — by contract they MAY be stale relative to the live node. They exist so element lists and agent narration need no hydration round-trip per element; anything you rely on MUST come from hydration (§5). The provider SHOULD derive `label` from the element's accessible name or visible text, falling back to the tag name.
-- The envelope is **closed**: providers MUST NOT add fields, and extra per-element data a plugin wants to ship travels *beside* the reference in that plugin's own payload, never inside it. This keeps the shape schema-stable across the capability's semver.
+- `tag` and `label` are mint-time, display-only snapshots — by contract they MAY be stale relative to the live node. They exist so element lists and agent narration need no hydration round-trip per element; anything you rely on MUST come from hydration (§5). The provider SHOULD derive `label` from the element's accessible name or visible text, falling back to the tag name.
+- The envelope is closed: providers MUST NOT add fields, and extra per-element data a plugin wants to ship travels *beside* the reference in that plugin's own payload, never inside it. This keeps the shape schema-stable across the capability's semver.
 - Geometry is deliberately excluded from the envelope: it is volatile, and a snapshot in the envelope would invite trust in stale data. Geometry is a hydration facet (§5.1).
 
 ### 2.3 The shared schema definition
@@ -84,23 +84,23 @@ The envelope is plain JSON by construction and, like all Command/Event/Context d
 
 *Consolidates: #12.*
 
-Behind every reference is the provider's **element registry**: the id → node map that mints and resolves references.
+Behind every reference is the provider's element registry: the id → node map that mints and resolves references.
 
 ### 3.1 Non-pinning
 
 The registry MUST NOT keep DOM alive: entries hold nodes weakly (id → `WeakRef`, with `FinalizationRegistry`-style pruning of collected entries). Minting a reference never extends a node's lifetime; garbage collection is the only collector.
 
-Consequently there is **no `release()` API in v1** — consumers have nothing to free, and a leaked reference costs a registry entry, not a DOM subtree.
+Consequently there is no `release()` API in v1 — consumers have nothing to free, and a leaked reference costs a registry entry, not a DOM subtree.
 
 ### 3.2 The single failure: `stale reference`
 
-Resolution has exactly one failure mode, the **stale reference** error: the node has been collected, or the id is not known to this registry (never minted here, or minted in a previous page session).
+Resolution has exactly one failure mode, the stale reference error: the node has been collected, or the id is not known to this registry (never minted here, or minted in a previous page session).
 
-The contract deliberately does not distinguish *unknown* from *expired*: WeakRef pruning makes the distinction unreliable exactly when it would matter, so a two-error scheme would be a lie. Providers MUST surface staleness as a single [named error](./diagnostics.md#3-named-errors-switchboarderror) — code `stale-reference` ([diagnostics spec §5.3](./diagnostics.md#53-capability-contract-codes)) — from `describe` (§4) and the describe command (§5.2), or as `null` (from `resolve`, §4) — never as a fabricated empty result.
+The contract deliberately does not distinguish *unknown* from *expired*: WeakRef pruning makes the distinction unreliable exactly when it would matter, so a two-error scheme would be a lie. Providers MUST surface staleness as a single [named error](./diagnostics.md#3-named-errors-switchboarderror), code `stale-reference` ([diagnostics spec §5.3](./diagnostics.md#53-capability-contract-codes)) — from `describe` (§4) and the describe command (§5.2), or as `null` (from `resolve`, §4) — never as a fabricated empty result.
 
 ### 3.3 Detachment is not death
 
-An out-of-document node that is still GC-alive (e.g. held by a framework about to re-insert it) MUST still resolve and hydrate. Hydration reports `connected: false` (§5.2) and the consumer decides what detachment means for its use case. Only collection — or an unknown id — makes a reference stale.
+An out-of-document node that is still GC-alive (e.g. held by a framework about to re-insert it) MUST still resolve and hydrate. Hydration reports `connected: false` (§5.2) and the consumer decides what detachment means for its use case. Only collection, or an unknown id, makes a reference stale.
 
 ## 4. The service
 
@@ -126,7 +126,7 @@ interface DomInspectorService {
 
 *Consolidates: #12.*
 
-**Hydration** is fetching element detail on demand instead of shipping it eagerly. Lazy hydration means *don't ship unasked-for data*, not *ship it in many trips*: one call fetches exactly the facets the caller wants, and the alternative — a fleet of narrow per-detail commands — is rejected because it would bloat the agent tool list.
+**Hydration** is fetching element detail on demand instead of shipping it eagerly. Lazy hydration means *don't ship unasked-for data*, not *ship it in many trips*: one call fetches exactly the facets the caller wants, and the alternative, a fleet of narrow per-detail commands — is rejected because it would bloat the agent tool list.
 
 ### 5.1 The facet menu
 
@@ -153,9 +153,9 @@ interface DescribeResult {
 
 ### 5.2 The describe command: `dom.describe-element`
 
-The provider MUST register **one** faceted describe command, id `dom.describe-element` — the agent-side entry to hydration:
+The provider MUST register one faceted describe command, id `dom.describe-element` — the agent-side entry to hydration:
 
-- **Input:** `{ element: string, facets?: Facet[] }`, where `element` is a reference **id** (§2.1; agents copy it from an envelope they hold). `facets` defaults to `[]`.
+- **Input:** `{ element: string, facets?: Facet[] }`, where `element` is a reference id (§2.1; agents copy it from an envelope they hold). `facets` defaults to `[]`.
 - **Result:** `DescribeResult` (§5.1) in one round-trip.
 - **Stale reference:** the whole command MUST fail with the stale-reference error — at the bridge this surfaces as an `isError` result naming the offender (see the bridge protocol spec). `connected: false` with facet data is the detached-but-alive case and is *not* an error.
 
@@ -165,7 +165,7 @@ The kernel and the bridge know nothing of hydration: `dom.describe-element` is a
 
 *Consolidates: #16 (resolving #13's flag); #14.*
 
-The provider MUST register the picker command `dom.pick-element` — "ask the human to point at an element" — and the context key `dom.selected-element`. The picker is agent-invocable by design: agent invokes pick → human clicks → agent holds the envelope (and can read it back from `dom.selected-element`) → agent hydrates via `dom.describe-element`.
+The provider MUST register the picker command `dom.pick-element`, which asks the human to point at an element, and the context key `dom.selected-element`. The picker is agent-invocable by design: agent invokes pick → human clicks → agent holds the envelope (and can read it back from `dom.selected-element`) → agent hydrates via `dom.describe-element`.
 
 ### 6.1 The dual outcome
 
@@ -184,7 +184,7 @@ type PickResult =
   | { picked: false; reason: 'cancelled' | 'timeout' }
 ```
 
-The result is this structured union, **never** an error result: a human declining to pick (`cancelled` — e.g. Esc) or letting the picker expire (`timeout`) is an *answer*, not a malfunction. `isError` stays reserved for real failures, so agent retry logic stays sane.
+The result is this structured union, never an error result: a human declining to pick (`cancelled` — e.g. Esc) or letting the picker expire (`timeout`) is an *answer*, not a malfunction. `isError` stays reserved for real failures, so agent retry logic stays sane.
 
 ### 6.3 The deadline
 
@@ -196,7 +196,7 @@ If the invocation is aborted by the caller (`invocation.signal`, [kernel spec §
 
 *Consolidates: #12.*
 
-A reference is a handle for the living page; it does not survive a reload, by design. Anchoring an element *durably* is a different concept with different physics: an **element description** — fuzzy, best-effort re-location hints, obtained as the `description` facet (§5.1) and re-resolved after a reload by **whoever stored it**. The provider promises nothing about a description's future resolvability; re-location (e.g. the feedback plugin finding an annotation's element next session) is the storing consumer's best-effort affair.
+A reference is a handle for the living page; it does not survive a reload, by design. Anchoring an element *durably* is a different concept with different physics: an element description — fuzzy, best-effort re-location hints, obtained as the `description` facet (§5.1) and re-resolved after a reload by whoever stored it. The provider promises nothing about a description's future resolvability; re-location (e.g. the feedback plugin finding an annotation's element next session) is the storing consumer's best-effort affair.
 
 ```ts
 interface ElementDescription {
