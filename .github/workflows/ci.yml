@@ -37,6 +37,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Browser Mode tests (ui, toolbar) drive a real Chromium.
+      - run: pnpm --filter @switchboard-dev/ui exec playwright install --with-deps chromium
+
       - run: pnpm turbo run build
 
       - uses: actions/setup-node@v4

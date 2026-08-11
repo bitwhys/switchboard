@@ -1,7 +1,7 @@
 {
 	"name": "@switchboard-dev/ui",
 	"version": "0.0.0",
-	"description": "Shared UI primitives for Switchboard chrome and plugin panels (shadow-DOM a11y patterns P1–P8).",
+	"description": "Headless a11y primitives for Switchboard toolbar adapters — plain-DOM factories for the panel-chrome pattern set P1–P8.",
 	"type": "module",
 	"engines": {
 		"node": ">=20.19"
@@ -24,10 +24,10 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run"
 	},
-	"dependencies": {
-		"@switchboard-dev/core": "workspace:^"
-	},
 	"devDependencies": {
+		"@vitest/browser-playwright": "catalog:",
+		"axe-core": "catalog:",
+		"playwright": "catalog:",
 		"tsdown": "catalog:",
 		"typescript": "catalog:",
 		"unrun": "catalog:",
