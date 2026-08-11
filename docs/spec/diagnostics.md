@@ -6,7 +6,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in
 
 TypeScript signatures and typed-JSON shape blocks in this document are **binding**. Prose qualifies them; it does not override them.
 
-This document is the one place that defines what the rest of the suite means by **"loud"**, **"named error"**, and **"dev-mode warning"** — the diagnostics channel, the entry shape, the error-code table, dev mode, and the node-side stderr form. Every other document in the suite uses those words as links to this one and MUST NOT redefine them. Related documents: [`kernel-api.md`](./kernel-api.md), [`bridge-protocol.md`](./bridge-protocol.md), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
+This document is the one place that defines what the rest of the suite means by "loud", "named error", and "dev-mode warning" — the diagnostics channel, the entry shape, the error-code table, dev mode, and the node-side stderr form. Every other document in the suite uses those words as links to this one and MUST NOT redefine them. Related documents: [`kernel-api.md`](./kernel-api.md), [`bridge-protocol.md`](./bridge-protocol.md), [`toolbar-contract.md`](./toolbar-contract.md), [`dom-inspector-contract.md`](./dom-inspector-contract.md).
 
 *Background (not binding): the resolution of ticket #37 (the diagnostics model); the `EADDRINUSE` behavior of the bridge-port research (#40).*
 
@@ -14,11 +14,11 @@ This document is the one place that defines what the rest of the suite means by 
 
 ## 1. Scope
 
-Every specification in this suite demands that failures be "loud" and that certain lapses produce a "dev-mode warning." This document defines those words mechanically, once: one kernel-owned **diagnostics channel**, two severities, a stable **code** per diagnostic, and a **stamped attribution** that says who spoke and who is responsible.
+Every specification in this suite demands that failures be "loud" and that certain lapses produce a "dev-mode warning." This document defines those words mechanically, once: one kernel-owned diagnostics channel, two severities, a stable code per diagnostic, and a stamped attribution that says who spoke and who is responsible.
 
 The channel is a reporting surface, never control flow: subscribing, unsubscribing, or disabling the console reporter changes what is *observed*, not what *happens*. Thrown errors are control flow and can never be suppressed (§2.1).
 
-The channel exists **page-side only**. The bridge's node side uses the same codes over a different transport — stderr JSON lines (§8).
+The channel exists page-side only. The bridge's node side uses the same codes over a different transport — stderr JSON lines (§8).
 
 ## 2. Loudness: the two severities
 
@@ -26,12 +26,12 @@ Diagnostic entries carry `severity: 'error' | 'warning'` — exactly the two wor
 
 ### 2.1 Loud errors
 
-A **loud error** is both of, always together:
+A loud error is both of, always together:
 
-1. a named error (§3) **thrown** — or, for async surfaces, **rejected** — at the failing call site, and
-2. a diagnostic entry with `severity: 'error'` **emitted** on the channel (§6), carrying the same `code` and attribution as the thrown error.
+1. a named error (§3) thrown at the failing call site, or rejected for async surfaces, and
+2. a diagnostic entry with `severity: 'error'` emitted on the channel (§6), carrying the same `code` and attribution as the thrown error.
 
-Loud errors are **unconditional**: dev mode (§7) never changes them, and nothing can suppress the throw — "suppress" only ever means unsubscribing from the channel or disabling the console reporter (§6.3). Console output is not the mechanism of loudness; it is the default subscriber.
+Loud errors are unconditional: dev mode (§7) never changes them, and nothing can suppress the throw — "suppress" only ever means unsubscribing from the channel or disabling the console reporter (§6.3). Console output is not the mechanism of loudness; it is the default subscriber.
 
 ### 2.2 Dev-mode warnings
 
@@ -75,17 +75,17 @@ interface Diagnostic {
 
 ### 4.1 `source` is stamped
 
-`source` names the emitter and is **stamped by the kernel — never taken from the caller**: for `api.diagnostics.emit` (§6.2) it is the calling plugin's id; for the kernel's own diagnostics it is `'kernel'`; the page-side bridge client emits as `'bridge'`; the application developer's own emissions (if any) as `'host'`. A plugin cannot speak as anyone but itself.
+`source` names the emitter and is stamped by the kernel — never taken from the caller: for `api.diagnostics.emit` (§6.2) it is the calling plugin's id; for the kernel's own diagnostics it is `'kernel'`; the page-side bridge client emits as `'bridge'`; the application developer's own emissions (if any) as `'host'`. A plugin cannot speak as anyone but itself.
 
-The three words `kernel`, `bridge`, and `host` are **reserved as sources**: a plugin whose manifest `id` is one of them MUST be rejected with a loud `reserved-namespace` error (the same rule as `switchboard.*`, [kernel spec §2.4](./kernel-api.md#24-prefixes-and-the-reserved-namespace)).
+The three words `kernel`, `bridge`, and `host` are reserved as sources: a plugin whose manifest `id` is one of them MUST be rejected with a loud `reserved-namespace` error (the same rule as `switchboard.*`, [kernel spec §2.4](./kernel-api.md#24-prefixes-and-the-reserved-namespace)).
 
 ### 4.2 `plugin` is the responsible party
 
-`source` and `plugin` differ exactly when one party reports on another's act. When the toolbar rejects a malformed contribution ([toolbar contract §3](./toolbar-contract.md#3-the-toolbar-service)), the toolbar plugin is the `source` and the **contributor** is the `plugin`. When the kernel rejects a malformed manifest, `source: 'kernel'` and `plugin` names the offender. When they coincide (a plugin reporting its own trouble), both carry the same id.
+`source` and `plugin` differ exactly when one party reports on another's act. When the toolbar rejects a malformed contribution ([toolbar contract §3](./toolbar-contract.md#3-the-toolbar-service)), the toolbar plugin is the `source` and the contributor is the `plugin`. When the kernel rejects a malformed manifest, `source: 'kernel'` and `plugin` names the offender. When they coincide (a plugin reporting its own trouble), both carry the same id.
 
 ## 5. The code table
 
-A `code` is a single lowercase kebab segment (`[a-z0-9-]+`), compared exactly. This table is the v1 registry — the **condition** each code names stays defined in its owning section; this document owns only the string.
+A `code` is a single lowercase kebab segment (`[a-z0-9-]+`), compared exactly. This table is the v1 registry — the condition each code names stays defined in its owning section; this document owns only the string.
 
 ### 5.1 Kernel codes
 
@@ -132,11 +132,11 @@ Codes introduced by a capability contract version under that capability's semver
 | `invalid-badge-value` | warning | a badge context value outside the badge table; rendered as no badge | [toolbar §4.3](./toolbar-contract.md#43-badges) |
 | `stale-reference` | error | an ElementReference whose node was collected or whose id is unknown to the registry | [dom.inspector §3.2](./dom-inspector-contract.md#32-the-single-failure-stale-reference) |
 
-`name-taken` and `invalid-name` are **reused** by capability contracts where their conditions recur (e.g. toolbar panel-id exclusivity, [toolbar §5.1](./toolbar-contract.md#51-panel-definition)) — same condition, same code, different emitter.
+`name-taken` and `invalid-name` are reused by capability contracts where their conditions recur (e.g. toolbar panel-id exclusivity, [toolbar §5.1](./toolbar-contract.md#51-panel-definition)) — same condition, same code, different emitter.
 
 ## 6. The channel
 
-One kernel-owned channel carries every entry. Like Events ([kernel spec §7](./kernel-api.md#7-events)) it is **strictly ephemeral**: no replay, no buffering — a late subscriber missed it. (The console reporter subscribes at construction, so it misses nothing.)
+One kernel-owned channel carries every entry. Like Events ([kernel spec §7](./kernel-api.md#7-events)) it is strictly ephemeral: no replay, no buffering — a late subscriber missed it. (The console reporter subscribes at construction, so it misses nothing.)
 
 Delivery MUST reach every current subscriber; a throwing subscriber MUST NOT prevent delivery to the others and MUST NOT affect the operation the diagnostic reports on.
 
@@ -173,7 +173,7 @@ interface DiagnosticsApi {
 ```
 
 - **Emit** exists because service-providing plugins do their own validation: the toolbar's contract-mandated loud rejection of a malformed contribution happens inside an ordinary service call, where the kernel is not in the middle. `emit` is the *emission half* only — a plugin raising a loud error additionally throws its own `SwitchboardError` (§2.1) from the failing call; `emit` never throws. The kernel stamps `source` with the calling plugin's id, unconditionally.
-- **Subscribe** has **full cross-plugin visibility**: every subscriber sees every entry, whoever emitted it — consistent with v1's trusted-plugin model ([kernel spec §1](./kernel-api.md#1-scope)), and sufficient for a future diagnostics panel with no new API.
+- **Subscribe** has full cross-plugin visibility: every subscriber sees every entry, whoever emitted it — consistent with v1's trusted-plugin model ([kernel spec §1](./kernel-api.md#1-scope)), and sufficient for a future diagnostics panel with no new API.
 - Warning emissions via `emit` obey dev mode like every other warning (§7): with dev off they are dropped, not delivered.
 
 ### 6.3 The default console reporter
@@ -186,23 +186,23 @@ The host disables it at construction:
 createSwitchboard({ diagnostics: { console: false } })
 ```
 
-The reporter is active **iff** dev mode is on (§7) **and** `diagnostics.console` is not `false`. Disabling it changes console output only — the channel fires and loud errors throw regardless.
+The reporter is active iff dev mode is on (§7) and `diagnostics.console` is not `false`. Disabling it changes console output only — the channel fires and loud errors throw regardless.
 
 ## 7. Dev mode
 
-Dev mode is a kernel construction option, **default on**:
+Dev mode is a kernel construction option, default on:
 
 ```ts
 createSwitchboard({ dev?: boolean })   // default: true
 ```
 
-Switchboard's presence in a page is itself the dev signal — stripping it from production builds is the adapters' job — so the kernel defaults to `true`. Adapters MAY pass an explicit value from their own environment; `core` itself MUST NOT sniff `NODE_ENV`, `import.meta.env`, or any other environment marker (it is bundler-agnostic).
+Switchboard's presence in a page is itself the dev signal. Stripping it from production builds is the adapters' job — so the kernel defaults to `true`. Adapters MAY pass an explicit value from their own environment; `core` itself MUST NOT sniff `NODE_ENV`, `import.meta.env`, or any other environment marker (it is bundler-agnostic).
 
-When dev is **off**: warnings (§2.2) are not emitted, and the console reporter (§6.3) is off. Nothing else changes — loud errors still throw **and** still emit on the channel. Loud errors are unconditional; warnings are dev-only.
+When dev is off: warnings (§2.2) are not emitted, and the console reporter (§6.3) is off. Nothing else changes — loud errors still throw and still emit on the channel. Loud errors are unconditional; warnings are dev-only.
 
 ## 8. The node side: stderr JSON lines
 
-The channel is page-side only. On the bridge's node side, **"loud" means the diagnostic written to stderr as JSON lines**: one JSON object per line, carrying the same shape as §4 — `severity`, `code`, `source`, `plugin`, `subject`, `message`, `timestamp` — and the process additionally crashing where a spec says so (e.g. `port-in-use`, §5.2).
+The channel is page-side only. On the bridge's node side, "loud" means the diagnostic written to stderr as JSON lines: one JSON object per line, carrying the same shape as §4: `severity`, `code`, `source`, `plugin`, `subject`, `message`, `timestamp` — and the process additionally crashing where a spec says so (e.g. `port-in-use`, §5.2).
 
 One code set, two transports; there is no second definition. How adapters surface or relay the stderr stream is the adapter contract's business, not this document's.
 
@@ -210,4 +210,4 @@ One code set, two transports; there is no second definition. How adapters surfac
 
 - **New codes and new severities are additive.** Kernel and bridge codes land as kernel API semver events; capability-contract codes land as minor bumps of their capability (§5.3). Subscribers MUST tolerate entries with unknown `code` or `severity` values.
 - **The entry shape evolves additively**: new optional fields MAY appear; subscribers MUST tolerate unknown fields — the suite's uniform rule ([kernel spec §15](./kernel-api.md#15-versioning-and-forward-compatibility)).
-- A `code`, once published, is **stable**: renaming or removing one is a breaking change of its owning surface.
+- A `code`, once published, is stable: renaming or removing one is a breaking change of its owning surface.
