@@ -49,3 +49,16 @@ jobs:
       # ^build dependencies replay from the turbo cache primed above, so
       # tsdown never executes on the matrix Node.
       - run: pnpm turbo run typecheck lint test
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      # No install step: the checker is dependency-free, so link rot is caught
+      # in seconds and stays catchable even when the workspace does not build.
+      - run: node scripts/check-doc-links.mjs
