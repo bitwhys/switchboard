@@ -99,7 +99,7 @@ The full shapes are given in the sections that define their semantics: handshake
 
 ### 4.2 Channel requirements
 
-The carrying channel MUST deliver messages **in order, reliably, in both directions**, and MUST signal disconnection to both ends. Everything above that — reconnect/backoff, pre-connect buffering — is adapter-contract territory, not wire protocol (§14.3).
+The carrying channel MUST deliver messages **in order, reliably, in both directions**, and MUST signal disconnection to both ends. Everything above that — reconnect/backoff, channel establishment — is [adapter-contract](./adapter-contract.md#3-the-page-channel) territory, not wire protocol (§14.3).
 
 ### 4.3 Tolerance posture
 
@@ -233,7 +233,7 @@ Agent-side cancellation, bridge timeout (§7.4), and agent disconnect mid-call e
 
 ### 7.4 Bridge timeout
 
-The bridge MUST bound every invocation with a timeout — **default 60 seconds**, configurable where the application developer configures the adapter. Expiry fires the cancel path and answers the agent with an error naming the command and the limit. There is no per-command override in v1 (additive later, §16).
+The bridge MUST bound every invocation with a timeout — **default 60 seconds**, configurable where the application developer configures the adapter ([adapter contract §5](./adapter-contract.md#5-timeouts)). Expiry fires the cancel path and answers the agent with an error naming the command and the limit. There is no per-command override in v1 (additive later, §16).
 
 ### 7.5 Disconnect mid-invoke
 
@@ -395,7 +395,7 @@ Calls landing in the gap get the actionable `isError`, never a protocol-level "u
 
 ### 14.3 Reconnection
 
-Reconnection is deliberately unremarkable: **fresh handshake + fresh snapshot** (§5.1, §6.1) — the same messages as first connect; there is no resumption or resync protocol, and the bridge requires **no persistence for correctness**. Dev-server restarts kill both doors together and force the page to reload and reconnect; sudden whole-process death MUST be treated as routine — Next-style dev children are re-forked on config edits and memory pressure as normal operation. Client-side reconnect mechanics (backoff, pre-connect send buffering, disconnect signaling) are **adapter-contract obligations**, not wire protocol: Vite's channel provides them natively; other adapters must implement them.
+Reconnection is deliberately unremarkable: **fresh handshake + fresh snapshot** (§5.1, §6.1) — the same messages as first connect; there is no resumption or resync protocol, and the bridge requires **no persistence for correctness**. Dev-server restarts kill both doors together and force the page to reload and reconnect; sudden whole-process death MUST be treated as routine — Next-style dev children are re-forked on config edits and memory pressure as normal operation. Client-side reconnect mechanics (backoff, channel establishment, disconnect signaling) are **[adapter-contract obligations](./adapter-contract.md#3-the-page-channel)**, not wire protocol: Vite's channel provides them natively; other adapters must implement them.
 
 Agent-side reconnection is the MCP client's job per its protocol era; the bridge's only obligation is §10.1 — a fresh `tools/list` is always the truth.
 
@@ -419,7 +419,7 @@ The MCP endpoint MUST validate the `Origin` header against an allowlist of dev o
 
 ### 15.3 Page door: channel security
 
-Browsers always send `Origin` on WebSocket handshakes (RFC 6455) but never enforce anything — the server must. The page channel MUST be protected by **either** riding a channel with its own handshake protection (Vite's post-CVE token handshake) **or** enforcing an Origin allowlist / token check itself. An adapter supplying an alternative channel inherits this obligation; the RECOMMENDED default allowlist is any loopback origin, with strict origin pinning configurable.
+Browsers always send `Origin` on WebSocket handshakes (RFC 6455) but never enforce anything — the server must. The page channel MUST be protected by **either** riding a channel with its own handshake protection (Vite's post-CVE token handshake) **or** enforcing an Origin allowlist / token check itself. An adapter supplying an alternative channel inherits this obligation ([adapter contract §4](./adapter-contract.md#4-security)); the RECOMMENDED default allowlist is any loopback origin, with strict origin pinning configurable.
 
 ### 15.4 The reserved `auth` field
 
