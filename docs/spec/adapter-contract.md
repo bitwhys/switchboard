@@ -6,7 +6,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** in
 
 TypeScript signatures and typed-JSON shape blocks in this document are **binding**. Prose qualifies them; it does not override them.
 
-An **adapter** is the package that hosts the bridge inside a development server and connects a page kernel to it — `@switchboard-dev/adapter-vite`, `@switchboard-dev/adapter-next`, or a third-party equivalent for another host. This document is the one place that defines the obligations any adapter must meet on both paths, the agent path (the MCP edge) and the page path, plus the binding commitments of the two shipped adapters. §§2–9 bind every adapter equally, shipped or third-party; §10 and §11 bind the named packages. Related documents: [`bridge-protocol.md`](./bridge-protocol.md), [`kernel-api.md`](./kernel-api.md), [`diagnostics.md`](./diagnostics.md).
+An **adapter** is the package that hosts the bridge inside a development server and connects a page kernel to it: `@switchboard-dev/adapter-vite`, `@switchboard-dev/adapter-next`, or a third-party equivalent for another host. This document is the one place that defines the obligations any adapter must meet on both paths, the agent path (the MCP edge) and the page path, plus the binding commitments of the two shipped adapters. §§2–9 bind every adapter equally, shipped or third-party; §10 and §11 bind the named packages. Related documents: [`bridge-protocol.md`](./bridge-protocol.md), [`kernel-api.md`](./kernel-api.md), [`diagnostics.md`](./diagnostics.md).
 
 *Background (not binding): the resolution of ticket #43; §6 of the [adapter-next hosting research](../research/adapter-next-hosting.md); §§6–8 of the [bridge default-port research](../research/bridge-default-port.md) (#40); the channel-handle interface and ownership split of #38; the host-integration patterns of #44; the `port-in-use` interpretation of #73.*
 
@@ -16,7 +16,7 @@ An **adapter** is the package that hosts the bridge inside a development server 
 
 ### 1.1 The split
 
-The page half of the Switchboard protocol — handshake, snapshot building, grant filtering, the message loop, invoke/cancel/context/event handling, plain-JSON checking — is implemented once, by the page client that ships as the browser-only subpath export of `@switchboard-dev/bridge-mcp`. An adapter MUST inject that page client rather than reimplement any part of it: the protocol is MUST-heavy, and per-adapter copies were explicitly rejected (#38).
+The page half of the Switchboard protocol is implemented once, by the page client: handshake, snapshot building, grant filtering, the message loop, invoke/cancel/context/event handling, and plain-JSON checking. It ships as the browser-only subpath export of `@switchboard-dev/bridge-mcp`. An adapter MUST inject that page client rather than reimplement any part of it: the protocol is MUST-heavy, and per-adapter copies were explicitly rejected (#38).
 
 What remains is the adapter's, and it is exactly this contract:
 
@@ -41,7 +41,7 @@ The agent-facing MCP endpoint MUST be served at
 http://localhost:<bridge port>/mcp
 ```
 
-on the dedicated bridge port (§6) — never on the application's own port. The agent's URL is a hand-written literal in an MCP client config, and app ports drift (`next dev` silently increments off 3000, Vite off 5173): an agent path riding the app port breaks every configured agent the first time the port moves. One fixed path means one documented `.mcp.json` snippet for every Switchboard project, regardless of framework.
+on the dedicated bridge port (§6), never on the application's own port. The agent's URL is a hand-written literal in an MCP client config, and app ports drift (`next dev` silently increments off 3000, Vite off 5173): an agent path riding the app port breaks every configured agent the first time the port moves. One fixed path means one documented `.mcp.json` snippet for every Switchboard project, regardless of framework.
 
 ### 2.2 The page channel is the adapter's choice
 
@@ -73,7 +73,7 @@ A handle MUST NOT be handed to the page client before the underlying channel act
 
 ### 3.3 Disconnect signaling
 
-`onClose` MUST fire promptly when the channel is lost, whatever the cause — socket close, dev-server death, page navigation. After `onClose` fires the handle is spent: subsequent `send` calls MUST be discarded (not queued, not thrown).
+`onClose` MUST fire promptly when the channel is lost, whatever the cause: socket close, dev-server death, page navigation. After `onClose` fires the handle is spent: subsequent `send` calls MUST be discarded (not queued, not thrown).
 
 ### 3.4 Reconnection
 
@@ -102,23 +102,23 @@ Per [bridge §15.3](./bridge-protocol.md#153-page-path-channel-security), the pa
 
 ### 4.2 The default policy
 
-Where the adapter enforces origins itself (path (b)), the default allowlist MUST be: any loopback origin — `localhost`, `127.0.0.1`, `[::1]`, any port, any scheme. The application's own port is not reliably knowable from the adapter's mount point and drifts anyway; a wrongly pinned origin bricks the channel, while loopback-any still refuses every origin a malicious website can present. The agent path additionally admits absent-Origin requests (terminal agents) per [bridge §15.2](./bridge-protocol.md#152-agent-path-origin-allowlist).
+Where the adapter enforces origins itself (path (b)), the default allowlist MUST be any loopback origin: `localhost`, `127.0.0.1`, `[::1]`, any port, any scheme. The application's own port is not reliably knowable from the adapter's mount point and drifts anyway; a wrongly pinned origin bricks the channel, while loopback-any still refuses every origin a malicious website can present. The agent path additionally admits absent-Origin requests (terminal agents) per [bridge §15.2](./bridge-protocol.md#152-agent-path-origin-allowlist).
 
-**One policy object governs both paths** of the bridge port: an origin admitted at one path is admitted at the other. Strict origin pinning MUST be available as configuration (§9); it narrows the default, never widens the refusals.
+One policy object governs both paths of the bridge port: an origin admitted at one path is admitted at the other. Strict origin pinning MUST be available as configuration (§9); it narrows the default, never widens the refusals.
 
 ### 4.3 The shared WebSocket implementation
 
-`bridge-mcp`'s node side provides the page-path WebSocket implementation — upgrade handling on the bridge port, the Origin gate of §4.2, and wiring accepted sockets into §3.1 handles. adapter-next consumes it (§11.3); third-party adapters that want a WebSocket page path SHOULD reuse it rather than hand-roll security-critical code.
+`bridge-mcp`'s node side provides the page-path WebSocket implementation: upgrade handling on the bridge port, the Origin gate of §4.2, and wiring accepted sockets into §3.1 handles. adapter-next consumes it (§11.3); third-party adapters that want a WebSocket page path SHOULD reuse it rather than hand-roll security-critical code.
 
 ## 5. Timeouts
 
-The bridge bounds every invocation — default 60 seconds, no per-command override in v1 ([bridge §7.4](./bridge-protocol.md#74-bridge-timeout)). "Configurable where the application developer configures the adapter" means here: every adapter MUST expose `invokeTimeoutMs` in its options (§9) and pass it through to the bridge. Adapters MAY likewise expose the bridge's other tunables (grace period, tail-buffer size) under the bridge's own option names; their defaults are the bridge spec's.
+The bridge bounds every invocation: 60 seconds by default, with no per-command override in v1 ([bridge §7.4](./bridge-protocol.md#74-bridge-timeout)). "Configurable where the application developer configures the adapter" means here: every adapter MUST expose `invokeTimeoutMs` in its options (§9) and pass it through to the bridge. Adapters MAY likewise expose the bridge's other tunables (grace period, tail-buffer size) under the bridge's own option names; their defaults are the bridge spec's.
 
 ## 6. The bridge port
 
 ### 6.1 Default and fallbacks
 
-The default bridge port is 7654; the documented fallbacks are 7655 and 7656 (all inside IANA's explicitly-Unassigned 7649–7662 block — evidence in [the port research](../research/bridge-default-port.md)). The fallbacks are for humans to configure when running two Switchboard projects at once. They are never tried automatically.
+The default bridge port is 7654; the documented fallbacks are 7655 and 7656 (all inside IANA's explicitly-Unassigned 7649–7662 block; evidence in [the port research](../research/bridge-default-port.md)). The fallbacks are for humans to configure when running two Switchboard projects at once. They are never tried automatically.
 
 ### 6.2 One variable drives both sides
 
@@ -169,11 +169,11 @@ The bridge requires no persistence for correctness ([bridge §14.4](./bridge-pro
 
 The adapter MUST deliver a bootstrap module into the page in dev. The bootstrap subscribes to the [kernel handoff](./kernel-api.md#17-the-kernel-handoff), and when a kernel announces itself, attaches the page client (over §3 handles) to it. The app writes zero bridge code: install the adapter, call `createSwitchboard()`, connected — order-independent, because the handoff is push/subscribe both ways.
 
-On [retraction](./kernel-api.md#173-retraction) (`dispose()` — the HMR escape) the bootstrap MUST drop the connection; a later announce re-attaches. Direct use of the page client remains an escape hatch for exotic setups, but no supported integration requires it.
+On [retraction](./kernel-api.md#173-retraction) (`dispose()`, the HMR escape) the bootstrap MUST drop the connection; a later announce re-attaches. Direct use of the page client remains an escape hatch for exotic setups, but no supported integration requires it.
 
 ### 8.2 Configuration reaches the bootstrap, not the app
 
-The bootstrap learns the bridge port from the adapter (injection or environment — per-adapter mechanics in §10/§11), never from app code. There is no provider, no `connect()`, no port prop anywhere in the app-facing surface.
+The bootstrap learns the bridge port from the adapter (injection or environment; per-adapter mechanics in §10/§11), never from app code. There is no provider, no `connect()`, no port prop anywhere in the app-facing surface.
 
 ## 9. Configuration options
 
@@ -195,7 +195,7 @@ A Vite plugin: `switchboard(options?)`. The plugin declares `apply: 'serve'`, ma
 
 ### 10.2 Page channel: the HMR WebSocket
 
-The page channel rides Vite's own HMR WebSocket with `switchboard:`-prefixed typed events — server side via `server.ws` (or `server.environments.client.hot`; never the deprecated `server.hot`), client side via `import.meta.hot`. This satisfies §4.1(a) by construction: the channel is protected by Vite's post-CVE token handshake. Handles are handed on `vite:ws:connect` and closed on `vite:ws:disconnect` (§3.2–§3.3). Vite's client force-reloads the page when the dev server restarts, so reconnection collapses into the ordinary page-load path — §3.4 is satisfied by construction.
+The page channel rides Vite's own HMR WebSocket with `switchboard:`-prefixed typed events: server side via `server.ws` (or `server.environments.client.hot`; never the deprecated `server.hot`), client side via `import.meta.hot`. This satisfies §4.1(a) by construction: the channel is protected by Vite's post-CVE token handshake. Handles are handed on `vite:ws:connect` and closed on `vite:ws:disconnect` (§3.2–§3.3). Vite's client force-reloads the page when the dev server restarts, so reconnection collapses into the ordinary page-load path — §3.4 is satisfied by construction.
 
 ### 10.3 The agent path
 
@@ -234,7 +234,7 @@ with the §9 options. Environment precedence per §6.2 and §11.5.
 
 ### 11.3 Both paths on the bridge port
 
-`register()` starts one in-process server on the bridge port carrying both paths — `POST/GET/DELETE /mcp` (Streamable HTTP) and the `/ws` upgrade for the page channel, via the shared WebSocket implementation (§4.3) under the §4.2 policy. Mandatory guards, in order: `process.env.NEXT_RUNTIME === 'nodejs'` (multi-runtime passes); `process.env.NODE_ENV === 'development'` (§7.1); the `globalThis` idempotency flag (§7.2); the bounded `EADDRINUSE` retry then catch (§6.3 — `next dev` survives).
+`register()` starts one in-process server on the bridge port carrying both paths: `POST/GET/DELETE /mcp` (Streamable HTTP) and the `/ws` upgrade for the page channel, via the shared WebSocket implementation (§4.3) under the §4.2 policy. Mandatory guards, in order: `process.env.NEXT_RUNTIME === 'nodejs'` (multi-runtime passes); `process.env.NODE_ENV === 'development'` (§7.1); the `globalThis` idempotency flag (§7.2); the bounded `EADDRINUSE` retry then catch (§6.3, so `next dev` survives).
 
 `next build` MUST never start the listener, under either bundler. This guard was reasoned but never exercised in the research; the adapter's contract test suite exercises it for both `next build` and `next build --webpack`.
 
@@ -257,6 +257,6 @@ The page bundle cannot read `SWITCHBOARD_PORT`; Next inlines only `NEXT_PUBLIC_*
 
 ## 12. Third-party adapters
 
-A third-party adapter is bound by §§2–9 exactly as the shipped ones are. In brief: inject the page client, never reimplement it (§1.1); agent path on the bridge port (§2.1); open-only single-use handles with prompt close signaling (§3); a secured page channel with the loopback-any default (§4); `invokeTimeoutMs` exposed (§5); the port rule — one variable, fail loud, never scan, host survives (§6); inert outside dev, idempotent, stateless (§7); bootstrap injected, zero app-side bridge code (§8); the §9 option names. `bridge-mcp`'s node side (`startBridgeServer`, the WebSocket implementation) SHOULD be reused rather than reimplemented.
+A third-party adapter is bound by §§2–9 exactly as the shipped ones are. In brief: inject the page client, never reimplement it (§1.1); agent path on the bridge port (§2.1); open-only single-use handles with prompt close signaling (§3); a secured page channel with the loopback-any default (§4); `invokeTimeoutMs` exposed (§5); the port rule of one variable, fail loud, never scan, host survives (§6); inert outside dev, idempotent, stateless (§7); bootstrap injected, zero app-side bridge code (§8); the §9 option names. `bridge-mcp`'s node side (`startBridgeServer`, the WebSocket implementation) SHOULD be reused rather than reimplemented.
 
-Watch items (not binding), recorded so they are revisited rather than inherited: if `NextResponse.upgrade()` (Next RFC #95514) ships, both of adapter-next's paths could move to the app's port and the fixed-port rule SHOULD be re-evaluated (per the port research); tunneled/remote dev (Codespaces) may warrant a same-origin rewrite façade over the bridge port — unvalidated, out of v1.
+Watch items (not binding), recorded so they are revisited rather than inherited: if `NextResponse.upgrade()` (Next RFC #95514) ships, both of adapter-next's paths could move to the app's port and the fixed-port rule SHOULD be re-evaluated (per the port research); tunneled/remote dev (Codespaces) may warrant a same-origin rewrite façade over the bridge port: unvalidated, out of v1.
