@@ -79,6 +79,8 @@ interface Diagnostic {
 
 The three words `kernel`, `bridge`, and `host` are reserved as sources: a plugin whose manifest `id` is one of them MUST be rejected with a loud `reserved-namespace` error (the same rule as `switchboard.*`, [kernel spec §2.4](./kernel-api.md#24-prefixes-and-the-reserved-namespace)).
 
+Not to be confused with `Invocation.source` ([kernel spec §6.5](./kernel-api.md#65-dispatching-for-someone-else-source)), which is spelled the same and works the opposite way: it is *declared* by the dispatching caller and says who the call is **for**, an untrusted advisory. This field says who **spoke**, and a dispatch is attributed here to the party holding the door — a plugin that dispatches as `'agent'` still reports as itself.
+
 ### 4.2 `plugin` is the responsible party
 
 `source` and `plugin` differ exactly when one party reports on another's act. When the toolbar rejects a malformed contribution ([toolbar contract §3](./toolbar-contract.md#3-the-toolbar-service)), the toolbar plugin is the `source` and the contributor is the `plugin`. When the kernel rejects a malformed manifest, `source: 'kernel'` and `plugin` names the offender. When they coincide (a plugin reporting its own trouble), both carry the same id.
@@ -103,6 +105,7 @@ A `code` is a single lowercase kebab segment (`[a-z0-9-]+`), compared exactly. T
 | `invalid-input` | error | a command's `validate` returned issues; dispatch refused | [kernel §6.3](./kernel-api.md#63-validation) |
 | `command-not-found` | error | `commands.execute` for an id no command is registered under | [kernel §6.1](./kernel-api.md#61-registration-and-dispatch) |
 | `command-failed` | error | a command handler threw; wrapped with the command id | [kernel §6.1](./kernel-api.md#61-registration-and-dispatch) |
+| `invocation-aborted` | error | `commands.execute` called with an already-aborted signal; dispatch refused | [kernel §6.6](./kernel-api.md#66-cancellation-the-callers-signal) |
 | `permission-denied` | error | a call gated by an enforced permission the plugin does not hold (v1: `storage:use`) | [kernel §13.5](./kernel-api.md#135-permission-storageuse) |
 | `when-failed` | warning | a `when` predicate threw during evaluation; contained, the command treated as not listed | [kernel §11.1](./kernel-api.md#111-the-tracked-read-context-view) |
 | `duplicate-kernel` | warning | a second kernel announced while a first is live; first live kernel wins | [kernel §17.2](./kernel-api.md#172-first-live-kernel-wins) |

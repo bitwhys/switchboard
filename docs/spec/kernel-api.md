@@ -163,15 +163,20 @@ Terminology rule: the word **Context** belongs exclusively to the primitive. The
 
 ## 6. Commands
 
-*Consolidates: #5; schema decision from #3.*
+*Consolidates: #5; schema decision from #3; §6.5–§6.6 from #95.*
 
 A **Command** is a named, invocable operation: one structured input in, serializable data out. Commands are the unit agents invoke as MCP tools.
 
 ```ts
 interface CommandsApi {
   register(command: CommandDefinition): Disposable
-  execute(id: string, input?: object): Promise<unknown>
+  execute(id: string, input?: object, options?: ExecuteOptions): Promise<unknown>
   observe(cb: (commands: CommandRecord[]) => void): Disposable  // §16.1
+}
+
+interface ExecuteOptions {
+  source?: Invocation['source']   // who the caller is acting for (§6.5)
+  signal?: AbortSignal            // the caller's cancellation signal (§6.6)
 }
 
 interface CommandDefinition {
@@ -187,15 +192,15 @@ interface CommandDefinition {
 }
 
 interface Invocation {
-  source: 'ui' | 'agent' | 'plugin' | 'host'   // 'host': via the kernel instance (§18.2)
-  signal: AbortSignal
+  source: 'ui' | 'agent' | 'plugin' | 'host'   // declared by the caller (§6.5)
+  signal: AbortSignal                          // the caller's, or a never-firing one (§6.6)
 }
 ```
 
 ### 6.1 Registration and dispatch
 
 - Command ids MUST satisfy the name grammar (§2.1), which keeps them within MCP's `[A-Za-z0-9_.-]` and ≤ 128 chars, and MUST be unique (exclusive kind, §2.2). Violations are [loud](./diagnostics.md#21-loud-errors) registration errors. Ids pass to the bridge verbatim as tool names; the bridge never sanitizes.
-- `execute` takes a single structured input object (mirroring MCP `tools/call`) and returns a JSON-safe value (plain JSON, §14). The handler MAY be sync or async; callers always receive a Promise.
+- `execute` takes a single structured input object (mirroring MCP `tools/call`) and returns a JSON-safe value (plain JSON, §14). The handler MAY be sync or async; callers always receive a Promise. Its third argument carries what the caller knows and the kernel cannot: who the call is *for* (§6.5) and how to cancel it (§6.6).
 - The handler is named `execute` for shape-compatibility with W3C WebMCP `ModelContext.registerTool` and naming symmetry with `commands.execute`.
 - Errors thrown by the handler become structured invocation errors wrapped with the command id. (At the bridge these map to MCP `isError: true` results — see the bridge protocol spec.)
 
@@ -223,9 +228,36 @@ If `validate` returns issues, the kernel MUST NOT run `execute` and MUST return 
 
 `annotations` is an MCP `ToolAnnotations`-shaped object carried verbatim. Annotations are untrusted behavioral hints for UX and agent policy — never enforcement, never a security boundary. (The bridge defaults `openWorldHint: false`; see the bridge protocol spec.)
 
+### 6.5 Dispatching for someone else: `source`
+
+Some callers dispatch on behalf of a party that is not themselves. A toolbar adapter turns a click into a command ([toolbar contract §4.2](./toolbar-contract.md#42-command-items-are-presentation-only), which MUSTs `source: 'ui'`); the page client turns an agent's `tools/call` into one ([bridge §7.1](./bridge-protocol.md#71-invoke-and-result), which needs `'agent'`). `options.source` is how they say so.
+
+- Omitting `source` keeps the door's default: `'plugin'` through `PluginApi` (§5), `'host'` through the kernel instance (§18.2). Existing calls are unaffected.
+- `source` is available on **both doors**, and any caller MAY claim any value. There is no privileged claimant: §1 trusts in-page code, and §18.2 already settles the same question the same way — withholding it would protect nothing, and the toolbar adapter that needs `'ui'` is itself a plugin.
+- **`Invocation.source` is a claim, not a fact.** It sits in the same class as `annotations` (§6.4): an untrusted advisory for UX and agent policy, never enforcement, never a security boundary. A handler MUST NOT gate anything on it that matters.
+- An unrecognized `source` string is carried verbatim to the handler and never validated at runtime — the §15 rule, unknown is tolerated and grants nothing.
+
+The word `source` also names a stamped, unforgeable field on the diagnostics channel ([diagnostics §4.1](./diagnostics.md#41-source-is-stamped)). The two are different fields with different jobs, and both keep their names:
+
+| | answers | who sets it |
+| --- | --- | --- |
+| diagnostics `source` | who **spoke** | stamped by the kernel; a plugin cannot speak as anyone but itself |
+| `Invocation.source` | who **asked** | declared by the caller |
+
+Diagnostics attribution for a dispatch stays with the party holding the door, whatever was claimed: a plugin that dispatches as `'agent'` still appears under its own id on the channel.
+
+### 6.6 Cancellation: the caller's signal
+
+`Invocation.signal` exists so a long-running handler can stop early. `options.signal` is what makes it fire.
+
+- A supplied signal passes through to `Invocation.signal` **verbatim** — the kernel neither wraps it nor links it to one of its own, so the handler observes exactly the signal the caller holds.
+- With no signal supplied the kernel MUST still provide one that never fires, so every handler receives the shape §6 promises and no handler needs a null check.
+- **Abort is advisory, and the kernel MUST NOT reject on it.** The promise `execute` returned settles with the handler's own outcome — a handler that ignores its signal runs to completion and its result is delivered normally. Cancellation is cooperative: the kernel never invents an outcome the world does not have. Deadlines belong to whoever set them, and a caller that must stop waiting races the promise on its own side. (This is [bridge §7.3](./bridge-protocol.md#73-cancellation)'s "cooperative and best-effort" stated on the kernel side; the bridge bounds its own invocations at §7.4 and answers its own disconnects at §7.5.)
+- A signal already aborted when `execute` is called short-circuits: the kernel MUST NOT run `validate` or `execute`, and rejects with a [loud](./diagnostics.md#21-loud-errors) `invocation-aborted` error.
+
 ## 7. Events
 
-*Consolidates: #5.*
+*Consolidates: #5; §7.1 from #95.*
 
 An **Event** is a named, fire-and-forget announcement that something *happened*.
 
@@ -233,6 +265,7 @@ An **Event** is a named, fire-and-forget announcement that something *happened*.
 interface EventsApi {
   emit(name: string, payload?: unknown): void
   on(name: string, cb: (payload: unknown, meta: EmitMeta) => void): Disposable
+  observe(cb: (name: string, payload: unknown, meta: EmitMeta) => void): Disposable  // §7.1
 }
 
 interface EmitMeta {
@@ -244,7 +277,23 @@ interface EmitMeta {
 - Events are strictly ephemeral: no replay, no buffering, ever. A late subscriber missed it. Replay has exactly one home — Context (§8). The boundary rule: *need the latest value later → Context; only announcing a moment → Event.*
 - Payloads MUST be plain JSON (§14).
 - Event names are an open channel (§2.2); emission is unrestricted and namespace ownership is by convention.
-- There are no wildcard subscriptions in v1.
+- There are no wildcard subscriptions in v1: `on` takes one exact name and the kernel defines no pattern or glob grammar. A consumer that must see *everything* does not subscribe by name at all — it taps the bus (§7.1).
+
+### 7.1 The whole-bus tap: `events.observe`
+
+`observe(cb)` subscribes to every emission on the bus, whatever it is called:
+
+```ts
+observe(cb: (name: string, payload: unknown, meta: EmitMeta) => void): Disposable
+```
+
+It exists for consumers that project emissions somewhere else rather than react to a particular one — the page client forwarding to the bridge's tail buffer ([bridge §9.1](./bridge-protocol.md#91-event-push)), an event log, an inspector.
+
+- **No replay.** A tap sees emissions as they happen and misses every one that fired before it subscribed — §7's ephemerality rule, unchanged and unweakened. The naming rule across this spec is uniform once stated: `observe` replays whatever state exists, so `context.observe` (§8.1) and `commands.observe` (§16.1) replay because a latest value and a current registry exist. Events have no state. A tap therefore replays nothing.
+- **Grant-agnostic**, exactly as §16 is for the registry: no permission gates it, and the kernel applies no filtering. A consumer computing an agent-facing surface applies its own filters to what it sees — the bridge's `bridge:events` check is the page client's job, not the kernel's ([bridge §3.5](./bridge-protocol.md#35-enforcement-point-the-page)).
+- **Both doors**, under the same name and the same semantics: `api.events.observe(…)` on `PluginApi` (§5) and `kernel.events.observe(…)` on the instance (§18.2) — §16.3's rule, applied here.
+- A tap sees every emission the bus carries, including the host's (§18.2) and any made re-entrantly from inside a callback. In v1 that is every emission there is: the kernel itself emits nothing here — its own reporting goes to the diagnostics channel ([diagnostics §2](./diagnostics.md#2-loudness-the-two-severities)) — and the reserved namespace (§2.4) is closed to plugins and host alike, so no `switchboard.*` emission can exist to see.
+- Ordering is fixed so consumers are not left guessing: for one emission, the named `on` listeners run first, then the taps, each in subscription order. A throwing callback is contained exactly as a throwing `on` listener is — it breaks neither the emitter nor its peers.
 
 ## 8. Context
 
@@ -460,7 +509,7 @@ The uniform rule, applied throughout this spec:
 - **Unknown = tolerated.** Unknown manifest fields, permission strings, and activation hints: [dev-mode warning](./diagnostics.md#22-dev-mode-warnings), preserved/carried verbatim, never an error, never a grant.
 - **Malformed = rejected [loudly](./diagnostics.md#21-loud-errors)**, blocking that plugin only.
 
-Shaped-to-be-additive future work (deliberately not v1): per-registration `bridged: false` opt-outs, wildcard and qualified permissions, the lazy-activation trigger names, an IndexedDB storage engine, binary payload support, and an observable plugin list (§16.2 is pull-only).
+Shaped-to-be-additive future work (deliberately not v1): per-registration `bridged: false` opt-outs, wildcard and qualified permissions, pattern subscriptions on `events.on` (§7.1 taps the whole bus instead), the lazy-activation trigger names, an IndexedDB storage engine, binary payload support, and an observable plugin list (§16.2 is pull-only).
 
 ## 16. Registry observation and the plugin list
 
@@ -607,7 +656,7 @@ interface Switchboard {
 ```
 
 - The instance is a full host API: the four primitive APIs with the same names and semantics as `PluginApi` (§5), plus the two read surfaces of §16 (per §16.3) and the diagnostics channel. v1 trusts in-page code (§1); withholding primitives from the application that constructed the kernel would protect nothing.
-- Acts through the instance are attributed to the reserved `host` party wherever an acting party is stamped: `EmitMeta.source` (§7, §8), `Invocation.source` (§6), and diagnostics attribution (diagnostics spec §4.1).
+- Acts through the instance are attributed to the reserved `host` party wherever an acting party is stamped: `EmitMeta.source` (§7, §8), `Invocation.source` (§6), and diagnostics attribution (diagnostics spec §4.1). `Invocation.source` is the one of those a caller may override, because it is a declaration rather than a stamp (§6.5) — `host` is its default through this door, not a guarantee about it. Stamped attribution stays `host` regardless.
 - `ready` resolves when eager activation has settled — every installed plugin has reached `active` or `failed` (§16.2). It **settles always and MUST NOT reject**: per-plugin failures are already loud on the diagnostics channel, and who made it is legible in `plugins.list()`.
 - `dispose()` tears down every plugin (§4.3), then the kernel, and retracts the instance's §17 announce (§17.3). It is the sanctioned replace path under HMR and the test-isolation primitive: dispose, then construct fresh.
 
