@@ -1,6 +1,6 @@
 # Reference Plugin Brief: Feedback & Annotations
 
-**Brief, not contract.** This document describes the v1 reference plugin `reference.feedback` — the suite's **main example** — at surface level. It carries no version header: briefs describe plugins, contracts bind them. Domain terms (annotation, lifecycle, outbox, sink, agent loop) lives in the glossary (`CONTEXT.md`, "Annotations").
+**Brief, not contract.** This document describes the v1 reference plugin `reference.feedback`, the suite's main example, at surface level. It carries no version header: briefs describe plugins, contracts bind them. Domain terms (annotation, lifecycle, outbox, sink, agent loop) lives in the glossary (`CONTEXT.md`, "Annotations").
 
 The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** in this document are to be interpreted as described in RFC 2119.
 
@@ -12,7 +12,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, and **MAY** in this document a
 
 *Consolidates: #14.*
 
-Human-authored, route-scoped **annotations** with a **local-first loop**: annotations live in the plugin's storage outbox, and delivery rides a capability extension point — `feedback.sink` — that is probed, never required, with **no v1 provider shipped**. Absent a sink, the loop still closes locally.
+Human-authored, route-scoped annotations with a local-first loop: annotations live in the plugin's storage outbox, and delivery rides a capability extension point — `feedback.sink` — that is probed, never required, with no v1 provider shipped. Absent a sink, the loop still closes locally.
 
 Two policies define the plugin:
 
@@ -35,7 +35,7 @@ definePlugin({
 })
 ```
 
-- **Hard requires** `toolbar` (the compose/list panel is the product) and `dom.inspector` (anchoring, §5). **Probes** `feedback.sink` with `services.tryGet` — the suite's **tryGet-absent** path, since no v1 provider exists.
+- **Hard requires** `toolbar` (the compose/list panel is the product) and `dom.inspector` (anchoring, §5). Probes `feedback.sink` with `services.tryGet` — the suite's tryGet-absent path, since no v1 provider exists.
 - **Deliberately no `bridge:context`**: the `feedback.open-count` key does not exist at the bridge — permission = existence, demonstrated in the negative ([bridge spec §3.3](../bridge-protocol.md#33-permission--existence-when--listing)).
 - `storage:use` is the suite's only storage grant ([kernel spec §13.5](../kernel-api.md#135-permission-storageuse)).
 
@@ -56,7 +56,7 @@ interface Annotation {
 }
 ```
 
-Plain JSON by construction ([kernel spec §14](../kernel-api.md#14-the-plain-json-rule)). The anchor is an **element description** ([inspector contract §7](../dom-inspector-contract.md#7-element-descriptions-the-durable-anchor-split)) — fuzzy, best-effort, reload-surviving; storing an ElementReference is always a bug.
+Plain JSON by construction ([kernel spec §14](../kernel-api.md#14-the-plain-json-rule)). The anchor is an element description ([inspector contract §7](../dom-inspector-contract.md#7-element-descriptions-the-durable-anchor-split)) — fuzzy, best-effort, reload-surviving; storing an ElementReference is always a bug.
 
 **Lifecycle `draft` → `open` → `resolved`:**
 
@@ -75,21 +75,21 @@ Stored records are read defensively ([kernel spec §13.4](../kernel-api.md#134-d
 |---|---|---|
 | Command | `feedback.list` | defaults to `open`; status filter available |
 | Command | `feedback.resolve` | resolution note required; fires `feedback.resolved` |
-| Event | `feedback.submitted` | fired draft → open; lands in the tail buffer, making the agent loop **reactive** rather than polled |
+| Event | `feedback.submitted` | fired draft → open; lands in the tail buffer, making the agent loop reactive rather than polled |
 | Event | `feedback.resolved` | announcement of a closed loop |
-| Context | `feedback.open-count` | **page-only** (no `bridge:context`, §2); feeds the panel item's badge (§7) |
+| Context | `feedback.open-count` | page-only (no `bridge:context`, §2); feeds the panel item's badge (§7) |
 
 ## 5. Anchoring rides the loose route
 
 *Consolidates: #14.*
 
-To anchor a new annotation the plugin invokes `dom.pick-element` through `api.commands.execute` — in-page cross-plugin dispatch, `invocation.source: 'plugin'` ([kernel spec §6.1](../kernel-api.md#61-registration-and-dispatch)); this brief is the suite's only validator of that path — observes `dom.selected-element`, then hydrates the `description` facet via the inspector **service** for the durable anchor. Reference for the living page, description for the stored record ([inspector contract §7](../dom-inspector-contract.md#7-element-descriptions-the-durable-anchor-split)).
+To anchor a new annotation the plugin invokes `dom.pick-element` through `api.commands.execute`. That is in-page cross-plugin dispatch, `invocation.source: 'plugin'` ([kernel spec §6.1](../kernel-api.md#61-registration-and-dispatch)), and this brief is the suite's only validator of that path. observes `dom.selected-element`, then hydrates the `description` facet via the inspector **service** for the durable anchor. Reference for the living page, description for the stored record ([inspector contract §7](../dom-inspector-contract.md#7-element-descriptions-the-durable-anchor-split)).
 
 ## 6. Composition: drafting from scan results
 
 *Consolidates: #14, #13.*
 
-The plugin observes `a11y.scan-completed` — the suite's only in-page cross-plugin Event subscription — and the panel then offers **"draft annotations from these violations"**: anchors hydrated from the violations' ElementReferences, bodies prefilled from rule help, landing as ordinary drafts the human reviews before submitting. This closes the original inspector → scanner → tracker chain ([stress test, scenario 1](../../../prototypes/primitive-stress-test/README.md)).
+The plugin observes `a11y.scan-completed`, the suite's only in-page cross-plugin Event subscription, and the panel then offers "draft annotations from these violations": anchors hydrated from the violations' ElementReferences, bodies prefilled from rule help, landing as ordinary drafts the human reviews before submitting. This closes the original inspector → scanner → tracker chain ([stress test, scenario 1](../../../prototypes/primitive-stress-test/README.md)).
 
 ## 7. Toolbar contribution
 
@@ -116,8 +116,8 @@ The workflow the plugin exists to prove ([stress test, scenario 2](../../../prot
 Validates, for the suite's coverage matrix ([index](../README.md)):
 
 - storage: the outbox, `storage:use`, defensive reads, reload survival;
-- permission = existence **in the negative** (`feedback.open-count` never at the bridge);
-- the **tryGet-absent** path (`feedback.sink`);
+- permission = existence in the negative (`feedback.open-count` never at the bridge);
+- the tryGet-absent path (`feedback.sink`);
 - in-page cross-plugin command dispatch (`invocation.source: 'plugin'`);
 - in-page cross-plugin Event subscription (`a11y.scan-completed`);
 - element descriptions as durable anchors;
