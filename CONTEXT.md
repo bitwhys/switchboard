@@ -18,7 +18,7 @@ The ubiquitous language for Switchboard, an open-source, pluggable in-applicatio
 Defined by their bridge semantics: Command, Event, and Context can cross to agents; Service never does.
 
 - **Command** — a named, invocable operation with optional schemas and behavioral hints; the unit agents invoke as MCP tools. Takes one structured input, returns serializable data.
-- **Event** — a named, fire-and-forget announcement that something *happened*. Strictly ephemeral: never replayed, never buffered; a late subscriber missed it.
+- **Event** — a named, fire-and-forget announcement that something *happened*. Strictly ephemeral: never replayed, never buffered; a late subscriber missed it. Subscribing is by exact name, or by **tap** — observing the whole bus, for consumers that project emissions elsewhere rather than react to one. A tap replays nothing either; ephemerality is what there is to see.
 - **Context** — a named, observable *value*: the latest state, replayed immediately to every new observer. The home of "what is true right now."
   - The boundary rule: *need the latest value later → Context; only announcing a moment → Event.*
 - **Service** — a named, live in-page object shared between plugins. Never serialized, never bridged; the only primitive that stays entirely inside the page.

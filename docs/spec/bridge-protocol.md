@@ -215,7 +215,7 @@ interface InvokeResult {
 }
 ```
 
-The page dispatches through the kernel with `source: 'agent'` and a fresh `AbortSignal` ([kernel spec §6](./kernel-api.md#6-commands)). A handler throw, a `validate` rejection, or an unknown/unavailable command id all answer as `ok: false` with an actionable message — the connection never goes silent on a live connection.
+The page dispatches through the kernel with `source: 'agent'` and a fresh `AbortSignal`, both passed as dispatch options ([kernel spec §6.5](./kernel-api.md#65-dispatching-for-someone-else-source), [§6.6](./kernel-api.md#66-cancellation-the-callers-signal)). The signal is the page client's own — it mints an `AbortController` per invocation and keeps it, which is what lets §7.3's `cancel` fire it. A handler throw, a `validate` rejection, or an unknown/unavailable command id all answer as `ok: false` with an actionable message — the connection never goes silent on a live connection.
 
 ### 7.2 The message-loop rule
 
@@ -270,7 +270,7 @@ Attribution is by act (§3.4): the page answers with the latest value iff that v
 
 ### 9.1 Event push
 
-The page pushes an `event` message for each emission by a plugin holding `bridge:events` — and only those (§3.5). Push is one-way; there is no acknowledgment.
+The page pushes an `event` message for each emission by a plugin holding `bridge:events` — and only those (§3.5). It sees emissions through the kernel's whole-bus tap ([kernel spec §7.1](./kernel-api.md#71-the-whole-bus-tap-eventsobserve)), which is grant-agnostic, so the grant check is the page client's own. Push is one-way; there is no acknowledgment.
 
 ```ts
 interface EventPush {

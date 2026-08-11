@@ -126,11 +126,12 @@ sequenceDiagram
     participant W as page client
     participant B as bridge
     participant A as agent
-    K->>W: emission by a plugin holding bridge:events
+    K->>W: every emission, via events.observe (grant-agnostic)
+    W->>W: keep only emitters holding bridge:events
     W->>B: event { name, payload, pluginId, timestamp } — no ack
     B->>B: append to bounded ring buffer (default 100)<br/>+ tabId + monotonic sequence number
     A->>B: switchboard.events.tail { since?, limit? }
     B-->>A: buffered entries, newest-last
 ```
 
-The bridge holds the tail buffer as a subscriber. Kernel Events stay ephemeral and are not buffered in the kernel ([kernel §7](../spec/kernel-api.md#7-events)). Sequence numbers support incremental polling. The buffer survives page reloads and disconnections, but it lasts only as long as the process and is cleared when the dev server stops ([bridge §9.2](../spec/bridge-protocol.md#92-the-tail-buffer), [§14.4](../spec/bridge-protocol.md#144-what-dies-with-the-server)).
+The page client sees emissions through the kernel's whole-bus tap, which is grant-agnostic, so the `bridge:events` filter is applied page-side before anything is pushed ([kernel §7.1](../spec/kernel-api.md#71-the-whole-bus-tap-eventsobserve), [bridge §9.1](../spec/bridge-protocol.md#91-event-push)). The bridge holds the tail buffer as a subscriber. Kernel Events stay ephemeral and are not buffered in the kernel ([kernel §7](../spec/kernel-api.md#7-events)). Sequence numbers support incremental polling. The buffer survives page reloads and disconnections, but it lasts only as long as the process and is cleared when the dev server stops ([bridge §9.2](../spec/bridge-protocol.md#92-the-tail-buffer), [§14.4](../spec/bridge-protocol.md#144-what-dies-with-the-server)).
