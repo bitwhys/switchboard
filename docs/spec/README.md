@@ -1,12 +1,12 @@
 # Switchboard v1 Spec Suite
 
-Switchboard is an open-source, pluggable in-application developer tool runtime — a Vercel-Toolbar-shaped surface an application developer composes from plugins, with **agent invocability as a first-class goal**: what a plugin registers in the page is, under the plugin's own grants, what an agent can call over MCP.
+Switchboard is an open-source, pluggable in-application developer tool runtime: a Vercel-Toolbar-shaped surface an application developer composes from plugins, with agent invocability as a first-class goal: what a plugin registers in the page is, under the plugin's own grants, what an agent can call over MCP.
 
 This directory is the complete v1 design: two specifications, two capability contracts, four reference-plugin briefs, and this index. Implementation starts from here with no open design questions. The evidence the suite cites lives beside it in [`../research/`](../research), [`../shadow-dom-a11y-patterns.md`](../shadow-dom-a11y-patterns.md), and [`../../prototypes/`](../../prototypes); the domain glossary is [`CONTEXT.md`](../../CONTEXT.md) at the repo root.
 
 ## Reading order
 
-Kernel → bridge → contracts → briefs. The kernel spec is first on purpose: it is the one place that defines the three cross-cutting rules — the **naming grammar**, the **permission strings**, and the **plain-JSON rule** — that every other document cites by section link and never paraphrases.
+Kernel → bridge → contracts → briefs. The kernel spec is first on purpose: it is the one place that defines the three cross-cutting rules (the naming grammar, the permission strings, and the plain-JSON rule), that every other document cites by section link and never paraphrases.
 
 | # | Document | What it binds | Kind |
 |---|---|---|---|
@@ -19,38 +19,38 @@ Kernel → bridge → contracts → briefs. The kernel spec is first on purpose:
 | 7 | [`plugins/scanner.md`](./plugins/scanner.md) | the UI-heavy consumer: on-demand axe-core scans | brief |
 | 8 | [`plugins/feedback.md`](./plugins/feedback.md) | the main one: annotations and the human → agent → human loop | brief |
 
-The division of labor: the kernel spec holds what a contract **is**, the bridge spec holds what the bridge **does about it**, a capability contract holds what its provider must **deliver**, and a brief **describes** a concrete plugin — briefs carry no version header and bind no one.
+The division of labor: the kernel spec holds what a contract is. The bridge spec holds what the bridge does about it, a capability contract holds what its provider must deliver, and a brief describes a concrete plugin — briefs carry no version header and bind no one.
 
 ## Versions
 
 | Surface | Version | Where defined |
 |---|---|---|
-| Kernel API (manifest schema and permission strings included) | **v1** | [`kernel-api.md`](./kernel-api.md) |
-| Bridge protocol | **`BRIDGE_PROTOCOL_VERSION: 1`** (integer, exact-match-or-refuse) | [`bridge-protocol.md` §2](./bridge-protocol.md#2-versioning-the-handshake-gate) |
-| Toolbar placement contract | **`toolbar@1.0.0`** (capability semver) | [`toolbar-contract.md` §2.2](./toolbar-contract.md#22-versioning) |
-| Element identity contract | **`dom.inspector@1.0.0`** (capability semver) | [`dom-inspector-contract.md` §8](./dom-inspector-contract.md#8-versioning) |
+| Kernel API (manifest schema and permission strings included) | v1 | [`kernel-api.md`](./kernel-api.md) |
+| Bridge protocol | `BRIDGE_PROTOCOL_VERSION: 1` (integer, exact-match-or-refuse) | [`bridge-protocol.md` §2](./bridge-protocol.md#2-versioning-the-handshake-gate) |
+| Toolbar placement contract | `toolbar@1.0.0` (capability semver) | [`toolbar-contract.md` §2.2](./toolbar-contract.md#22-versioning) |
+| Element identity contract | `dom.inspector@1.0.0` (capability semver) | [`dom-inspector-contract.md` §8](./dom-inspector-contract.md#8-versioning) |
 
 Plugin manifest `version` fields are informational only; compatibility work stays on capability semvers.
 
 ## The four primitives
 
-Defined by their bridge semantics — Command, Event, and Context can cross to agents; Service never does ([kernel spec §5–§9](./kernel-api.md#5-pluginapi)):
+Defined by their bridge semantics, in that Command, Event, and Context can cross to agents while Service never does ([kernel spec §5–§9](./kernel-api.md#5-pluginapi)):
 
 - **Command** — a named, invocable operation; the unit agents invoke as MCP tools. One structured input, serializable result.
 - **Event** — a fire-and-forget announcement that something *happened*. Strictly ephemeral: never replayed, never buffered by the kernel; a late subscriber missed it. (The bridge's tail buffer is a *subscriber's* recording, not kernel replay.)
 - **Context** — a named, observable *value*: latest state, replayed synchronously to every new observer. The home of "what is true right now."
 - **Service** — a live in-page object shared between plugins. Never serialized, never bridged.
 
-Two boundary rules sort everything: *need the latest value later → Context; only announcing a moment → Event* — and *live object → Service; data → everything else, where data means strict JSON* (the plain-JSON rule, [kernel spec §14](./kernel-api.md#14-the-plain-json-rule)). Storage is kernel infrastructure beside the primitives, not a fifth one ([kernel spec §13](./kernel-api.md#13-storage)); the four-primitive rule was deliberately stress-tested and survived ([`prototypes/primitive-stress-test/`](../../prototypes/primitive-stress-test/README.md)).
+Two boundary rules sort everything: *need the latest value later → Context; only announcing a moment → Event*, and *live object → Service; data → everything else, where data means strict JSON* (the plain-JSON rule, [kernel spec §14](./kernel-api.md#14-the-plain-json-rule)). Storage is kernel infrastructure beside the primitives, not a fifth one ([kernel spec §13](./kernel-api.md#13-storage)); the four-primitive rule was deliberately stress-tested and survived ([`prototypes/primitive-stress-test/`](../../prototypes/primitive-stress-test/README.md)).
 
 ## Coverage matrix
 
-The four reference plugins are chosen so that **every v1 kernel/bridge/storage feature is validated by at least one plugin or carries an explicit waiver**. The bridge-grant spread is deliberate — metrics `context+events` · inspector `commands+context` · feedback `commands+events` · scanner all three — so partial and full families are exercised without contrivance.
+The four reference plugins are chosen so that every v1 kernel/bridge/storage feature is validated by at least one plugin or carries an explicit waiver. The bridge-grant spread is deliberate (metrics `context+events` · inspector `commands+context` · feedback `commands+events` · scanner all three), so partial and full families are exercised without contrivance.
 
 | Feature | Validated by |
 |---|---|
 | Command registration, schemas, dispatch over the bridge | inspector, scanner, feedback |
-| ElementReference as command **input** | scanner (`a11y.scan`) |
+| ElementReference as command input | scanner (`a11y.scan`) |
 | In-page cross-plugin dispatch (`invocation.source: 'plugin'`) | feedback → `dom.pick-element` |
 | Event ephemerality + tail-buffer visibility | metrics, scanner, feedback |
 | In-page cross-plugin Event subscription | feedback ← `a11y.scan-completed` |
