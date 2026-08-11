@@ -12,6 +12,7 @@
 		"test": "turbo run test",
 		"lint": "biome check .",
 		"lint:docs": "node scripts/check-doc-links.mjs",
+		"lint:specs": "node scripts/check-spec-requirements.mjs",
 		"check": "turbo run build typecheck lint test",
 		"changeset": "changeset"
 	},

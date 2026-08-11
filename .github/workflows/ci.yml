@@ -54,11 +54,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history so the requirement diff below can reach the base ref.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24
 
-      # No install step: the checker is dependency-free, so link rot is caught
+      # No install step: both checkers are dependency-free, so doc rot is caught
       # in seconds and stays catchable even when the workspace does not build.
       - run: node scripts/check-doc-links.mjs
+
+      # Report-only. Changing a requirement is legitimate spec work, so this
+      # never fails the build — it just makes the delta visible in a diff that
+      # is otherwise mostly editorial churn.
+      - name: Spec requirement delta
+        run: node scripts/check-spec-requirements.mjs --base ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
