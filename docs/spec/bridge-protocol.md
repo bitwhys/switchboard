@@ -86,7 +86,7 @@ The kernel holds the manifests; the dev server does not. Grant filtering therefo
 Every message is a single JSON object with a `type` discriminator. Requests carry an `id` minted by the requester; the response echoes it. Invocation ids and read ids MUST be unique per connection for the connection's lifetime.
 
 ```ts
-type WireMessage = PageMessage | BridgeMessage
+type ProtocolMessage = PageMessage | BridgeMessage
 
 // page → bridge
 type PageMessage = Hello | Snapshot | InvokeResult | ContextValue | EventPush | Focus
@@ -168,10 +168,10 @@ Registry sync uses **full snapshots**: the page always sends its complete curren
 ```ts
 interface Snapshot {
   type: 'snapshot'
-  commands: WireCommand[]     // the COMPLETE current surface — not a diff
+  commands: AnnouncedCommand[]     // the COMPLETE current surface — not a diff
 }
 
-interface WireCommand {
+interface AnnouncedCommand {
   id: string                  // command id, verbatim (kernel spec §2, §6.1)
   title: string
   description?: string

@@ -115,11 +115,11 @@ A `code` is a single lowercase kebab segment (`[a-z0-9-]+`), compared exactly. T
 
 | Code | Severity | Condition | Defined by |
 |---|---|---|---|
-| `wire-illegal` | error | a value failed strict JSON serialization at the bridge, attributed to the acting plugin | [bridge §12](./bridge-protocol.md#12-where-the-plain-json-rule-is-enforced) |
+| `not-plain-json` | error | a value failed strict JSON serialization at the bridge, attributed to the acting plugin | [bridge §12](./bridge-protocol.md#12-where-the-plain-json-rule-is-enforced) |
 | `malformed-message` | error | a malformed message | [bridge §4.3](./bridge-protocol.md#43-tolerating-unknown-input) |
 | `protocol-mismatch` | error | the handshake was rejected on protocol-version mismatch; remedy: reload the tab | [bridge §5.3](./bridge-protocol.md#53-rejection) |
 | `port-in-use` | error | node-side (§8): the bridge's port is already bound (`EADDRINUSE`); the bridge MUST refuse to serve rather than scan — the hosting dev server survives | [adapter contract §6.3](./adapter-contract.md#63-eaddrinuse-fail-loud-never-scan) |
-| `unknown-wire-data` | warning | an unknown message type or field, tolerated | [bridge §4.3](./bridge-protocol.md#43-tolerating-unknown-input) |
+| `unknown-message-data` | warning | an unknown message type or field, tolerated | [bridge §4.3](./bridge-protocol.md#43-tolerating-unknown-input) |
 
 ### 5.3 Capability-contract codes
 

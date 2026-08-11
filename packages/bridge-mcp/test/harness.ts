@@ -1,5 +1,5 @@
 // Shared rig per the test strategy (#28): a REAL MCP SDK client over real
-// Streamable HTTP plays the agent; a fake page drives the wire protocol
+// Streamable HTTP plays the agent; a fake page drives the Switchboard protocol
 // straight into the bridge core, standing in for an adapter's channel.
 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -14,9 +14,9 @@ import {
 } from "../src/node/core";
 import { type BridgeServer, startBridgeServer } from "../src/node/http";
 import {
+	type AnnouncedCommand,
 	BRIDGE_PROTOCOL_VERSION,
 	type BridgeMessage,
-	type WireCommand,
 } from "../src/protocol";
 
 export const PAGE_URL = "http://localhost:5173";
@@ -161,7 +161,7 @@ export class FakePage {
 		this.bridge.handlePageMessage(this.conn, msg);
 	}
 
-	snapshot(commands: WireCommand[]): void {
+	snapshot(commands: AnnouncedCommand[]): void {
 		this.bridge.handlePageMessage(this.conn, { type: "snapshot", commands });
 	}
 
@@ -197,7 +197,7 @@ export class FakePage {
 				this.helloReject = msg;
 				return;
 			case "invoke": {
-				// §7.2 — the wire pump stays unblocked: dispatch runs detached.
+				// §7.2 — the message loop stays unblocked: dispatch runs detached.
 				const handler = this.handlers.get(msg.command);
 				const controller = new AbortController();
 				this.aborters.set(msg.id, controller);
@@ -264,8 +264,8 @@ export class FakePage {
 	}
 }
 
-/** The spike's demo surface, as wire commands (§6.1 shapes). */
-export function demoCommands(): WireCommand[] {
+/** The spike's demo surface, as announced commands (§6.1 shapes). */
+export function demoCommands(): AnnouncedCommand[] {
 	return [
 		{
 			id: "demo.echo",

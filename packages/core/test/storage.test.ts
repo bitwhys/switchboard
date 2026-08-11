@@ -410,16 +410,16 @@ describe("kernel §13.6 storage never bridges", () => {
 	});
 });
 
-describe("kernel §14 the wire-legal rule — kernel-side posture", () => {
-	it("the kernel never deep-inspects primitive payloads: a non-wire-legal event payload passes through undisturbed (enforcement is the bridge's)", async () => {
-		const { api, seen } = await apiOf({ id: "acme.wire", ...granted });
+describe("kernel §14 the plain-JSON rule — kernel-side behavior", () => {
+	it("the kernel never deep-inspects primitive payloads: a non-plain-JSON event payload passes through undisturbed (enforcement is the bridge's)", async () => {
+		const { api, seen } = await apiOf({ id: "acme.json", ...granted });
 		let received: unknown;
-		api.events.on("acme.wire.ping", (payload) => {
+		api.events.on("acme.json.ping", (payload) => {
 			received = payload;
 		});
-		const notWireLegal = new Map([["a", 1]]);
-		api.events.emit("acme.wire.ping", notWireLegal);
-		expect(received).toBe(notWireLegal);
+		const notPlainJson = new Map([["a", 1]]);
+		api.events.emit("acme.json.ping", notPlainJson);
+		expect(received).toBe(notPlainJson);
 		expect(seen.filter((d) => d.severity === "error")).toHaveLength(0);
 	});
 });

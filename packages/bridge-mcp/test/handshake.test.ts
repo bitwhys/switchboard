@@ -105,7 +105,7 @@ describe("bridge §5 handshake", () => {
 });
 
 describe("bridge §4.3 tolerance posture", () => {
-	it("unknown message types are tolerated with an unknown-wire-data warning", () => {
+	it("unknown message types are tolerated with an unknown-message-data warning", () => {
 		const { bridge, diagnostics } = rig();
 		const page = new FakePage(bridge);
 		page.connect();
@@ -113,7 +113,7 @@ describe("bridge §4.3 tolerance posture", () => {
 		expect(diagnostics).toContainEqual(
 			expect.objectContaining({
 				severity: "warning",
-				code: "unknown-wire-data",
+				code: "unknown-message-data",
 				subject: "hologram",
 			}),
 		);

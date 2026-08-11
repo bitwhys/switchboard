@@ -35,7 +35,7 @@ describe("bridge §7 invocation lifecycle", () => {
 		expect(page.received.some((m) => m.type === "cancel")).toBe(true);
 	});
 
-	it("§7.3: agent-side abort forwards a wire cancel and settles the invocation", async () => {
+	it("§7.3: agent-side abort forwards a cancel and settles the invocation", async () => {
 		const bridge = createBridge({ diagnostics: () => {} });
 		const page = connectDemoPage(bridge);
 		const controller = new AbortController();

@@ -1,15 +1,15 @@
-// The channel-agnostic bridge core (bridge spec §1): adapters ferry wire
+// The channel-agnostic bridge core (bridge spec §1): adapters ferry protocol
 // messages over whatever duplex channel they have; this module only sees
 // PageConnection. Ported from spikes/mcp-bridge-transport (wayfinder #9),
-// conformed to the normative wire shapes of bridge spec §4–§9, §13–§14.
+// conformed to the binding message shapes of bridge spec §4–§9, §13–§14.
 
 import { randomUUID } from "node:crypto";
 import pkg from "../../package.json";
 import {
+	type AnnouncedCommand,
 	BRIDGE_PROTOCOL_VERSION,
 	type BridgeMessage,
 	type PageMessage,
-	type WireCommand,
 } from "../protocol";
 import {
 	createDiagnostics,
@@ -49,7 +49,7 @@ interface TabState {
 	connectedAt: number;
 	focusedAt: number;
 	conn: PageConnection;
-	commands: WireCommand[];
+	commands: AnnouncedCommand[];
 }
 
 /** §9.2 — one tail-buffer entry: the pushed fields plus tabId and seq. */
@@ -103,7 +103,7 @@ export class Bridge {
 	private activeTab: TabState | null = null;
 
 	/** §6.3 — the one canonical registry `tools/list` is built from. */
-	private commands = new Map<string, WireCommand>();
+	private commands = new Map<string, AnnouncedCommand>();
 
 	private pendingInvokes = new Map<string, PendingInvoke>();
 	private pendingContextReads = new Map<string, PendingContextRead>();
@@ -155,7 +155,7 @@ export class Bridge {
 	// ── Page channel ───────────────────────────────────────────────────
 
 	/**
-	 * Feed one already-parsed wire message from a page connection. Unparseable
+	 * Feed one already-parsed protocol message from a page connection. Unparseable
 	 * input is the adapter's to report (§4.3) — it owns deserialization.
 	 */
 	handlePageMessage(conn: PageConnection, msg: unknown): void {
@@ -168,7 +168,7 @@ export class Bridge {
 			this.emitDiagnostic({
 				severity: "error",
 				code: "malformed-message",
-				message: "received a wire message with no `type` discriminator",
+				message: "received a message with no `type` discriminator",
 			});
 			return;
 		}
@@ -264,9 +264,9 @@ export class Bridge {
 				const unknownType = (msg as { type: string }).type;
 				this.emitDiagnostic({
 					severity: "warning",
-					code: "unknown-wire-data",
+					code: "unknown-message-data",
 					subject: unknownType,
-					message: `ignoring unknown wire message type '${unknownType}'`,
+					message: `ignoring unknown message type '${unknownType}'`,
 				});
 				return;
 			}
@@ -394,7 +394,7 @@ export class Bridge {
 	}
 
 	/** §6.3 — diff-then-notify: only a real delta reaches the agent surface. */
-	private setRegistry(commands: WireCommand[]) {
+	private setRegistry(commands: AnnouncedCommand[]) {
 		const next = new Map(commands.map((c) => [c.id, c]));
 		const changed =
 			next.size !== this.commands.size ||
@@ -409,7 +409,7 @@ export class Bridge {
 
 	// ── Agent-facing queries ───────────────────────────────────────────
 
-	listCommands(): WireCommand[] {
+	listCommands(): AnnouncedCommand[] {
 		return [...this.commands.values()];
 	}
 
@@ -505,7 +505,7 @@ export class Bridge {
 				});
 			}, this.invokeTimeoutMs);
 			if (signal) {
-				// §7.3 — agent cancel → wire cancel → the page fires its AbortSignal.
+				// §7.3 — agent cancel → protocol cancel → the page fires its AbortSignal.
 				pending.onAbort = () => {
 					active.conn.send({ type: "cancel", id });
 					this.settleInvoke(id, pending, {
