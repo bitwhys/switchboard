@@ -1,6 +1,6 @@
 {
 	"name": "@switchboard-dev/ui",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Headless a11y primitives for Switchboard toolbar adapters — plain-DOM factories for the panel-chrome pattern set P1–P8.",
 	"keywords": [
 		"switchboard",

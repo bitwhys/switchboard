@@ -1,6 +1,6 @@
 {
 	"name": "@switchboard-dev/bridge-mcp",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "The page ⇄ agent bridge: Switchboard wire protocol and the MCP edge (Streamable HTTP).",
 	"keywords": [
 		"switchboard",
