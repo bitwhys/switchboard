@@ -1,15 +1,17 @@
 # The exposure model
 
-This file explains who can see which plugin capabilities, and why. It is the part of the system where exposure mistakes can either show too much or hide something that should be available.
+This file covers who can see which plugin capabilities, and why: the `bridge:*` grants, the `when` predicate, and where each is enforced. It does not cover how those decisions travel to the agent — that is [`bridge-flows.md`](./bridge-flows.md). Source of truth: [bridge §3](../spec/bridge-protocol.md#3-bridge-grants-mechanics), [kernel §14](../spec/kernel-api.md#14-the-wire-legal-rule).
+
+Getting this wrong in either direction is a real bug: too much exposed, or something hidden that an agent needed.
 
 ## Two checks for commands
 
-A command appears in the agent tool list only when both of these are true:
+A command appears in the agent tool list only when both of these hold:
 
 - the plugin has `bridge:commands`
-- the command’s `when` predicate, if present, currently evaluates to true
+- the command's `when` predicate, if it has one, currently evaluates to true
 
-These two checks answer different questions:
+The two checks answer different questions ([bridge §3.3](../spec/bridge-protocol.md#33-permission--existence-when--listing)):
 
 | | Permission (`bridge:*`) | `when` predicate |
 |---|---|---|
@@ -20,62 +22,53 @@ These two checks answer different questions:
 | Changes over time | No | Whenever relevant context changes |
 | Security boundary? | No. It controls exposure, not capability | No. It only affects presentation |
 
-In short: **permission controls existence, `when` controls listing**. A command with `when: false` can still be dispatched in page code; a command from a plugin without `bridge:commands` is not exposed to the bridge at all.
+In short: permission controls existence, `when` controls listing. A command with `when: false` can still be dispatched from page code. A command from a plugin without `bridge:commands` is not exposed to the bridge at all.
 
 ## Three grant families
 
-The `bridge:*` grants are closed by default and apply to a whole family for a plugin.
+The `bridge:*` grants are closed by default, and each applies to a whole family for a plugin. Together with `when`, they determine exactly what an agent sees:
 
-| Grant held by plugin | What agents get |
-|---|---|
-| `bridge:commands` | Every listed command from that plugin, as an MCP tool |
-| `bridge:events` | Every event from that plugin, forwarded into the tail buffer |
-| `bridge:context` | That plugin’s context writes, readable through `switchboard.context.read` |
-| None | Nothing from that plugin is exposed at the bridge |
+| Plugin grant | `when` (commands only) | What the agent sees |
+|---|---|---|
+| `bridge:commands` | true or absent | The command is listed as an MCP tool and can be invoked |
+| `bridge:commands` | false | The tool is hidden; invoking it returns an `isError` response with a clear message |
+| No `bridge:commands` | — | Nothing. In-page `commands.execute()` still works |
+| `bridge:context` | — | The latest value of keys this plugin last wrote, tagged with the plugin id |
+| No `bridge:context` | — | `present: false, reason: 'not-granted'` for keys it last wrote |
+| `bridge:events` | — | Its events appear in `switchboard.events.tail` |
+| No `bridge:events` | — | Its events stay in the page |
+
+`feedback.open-count` is the worked example. The feedback plugin writes it, reads it back to drive a toolbar badge, and never holds `bridge:context`. So the key is fully functional in the page and simply does not exist at the bridge: an agent reading it gets `present: false, reason: 'not-granted'`. That is permission controlling existence, not a value being filtered out.
 
 ## How `when` is evaluated
 
-A `when` predicate is a pure function over a read-only Context view. The kernel tracks which keys were actually read during evaluation and re-runs the predicate only when one of those keys changes.
+A `when` predicate is a pure function over a read-only Context view. The kernel tracks which keys the predicate actually read, and re-runs it only when one of those keys changes.
 
 ## Where enforcement happens
 
-| Place | What it enforces | Why it is there |
+| Place | What it enforces | Why there |
 |---|---|---|
 | The page | Filters what gets announced, forwarded, and answered | The kernel holds the manifests, not the dev server |
-| The bridge | Checks serialization rules and validates `outputSchema` before replying to the agent | The kernel does not inspect payloads deeply |
+| The bridge | Checks the JSON rules and validates `outputSchema` before replying to the agent | The kernel does not inspect payloads deeply |
 
-The bridge relies on the page to filter correctly. In v1, there is no grant check in the dev-server process itself.
+The bridge relies on the page to filter correctly. In v1 there is no grant check in the dev-server process itself ([bridge §3.5](../spec/bridge-protocol.md#35-enforcement-point-the-page)).
 
 ## Attribution is based on the actor
 
 Event names and context keys are shared names, so the bridge cannot decide exposure from the name alone. It has to look at who performed the write or emission.
 
-- A context key may be written by different plugins over time; a read returns the value only if the latest writer has `bridge:context`
-- An event name may include both forwarded and unforwarded emissions; each emission is judged by the emitter
-- Each item that crosses the bridge is tagged with the plugin id that acted, and tools carry that id in `_meta["switchboard/pluginId"]`
+- A context key may be written by different plugins over time. A read returns the value only if the latest writer holds `bridge:context`
+- An event name may cover both forwarded and unforwarded emissions. Each emission is judged by its emitter
+- Every item crossing the bridge is tagged with the plugin id that acted, and tools carry that id in `_meta["switchboard/pluginId"]`
 
-## Serialization rules apply everywhere
+## Everything that crosses must be plain JSON
 
-A value must survive `JSON.parse(JSON.stringify(x))` unchanged to be considered wire-safe. That rule applies to command inputs and results, event payloads, and context values, whether or not a `bridge:*` grant is present.
+Command inputs and results, event payloads, and context values must all be plain JSON — values that survive a JSON round-trip unchanged ([kernel §14](../spec/kernel-api.md#14-the-wire-legal-rule)). The rule holds whether or not a `bridge:*` grant is present.
 
 ## The toolbar does not change exposure
 
-The toolbar does not add agent-visible surface or remove any.
+The toolbar neither adds agent-visible surface nor removes any.
 
 - A command item uses the same `when` rule as the command it wraps
 - There is no separate item-level `enabledWhen`
-- Adapters should not create panel-toggling commands, because that would give the adapter control over every plugin’s panels at once and blur plugin attribution
-
-## Summary table
-
-| Plugin grant | `when` (commands only) | What the agent sees |
-|---|---|---|
-| `bridge:commands` | true or absent | Tool is listed and can be invoked |
-| `bridge:commands` | false | Tool is hidden; invoking it returns an `isError` response with a clear message |
-| No `bridge:commands` | — | Nothing; in-page `commands.execute()` still works |
-| `bridge:context` | — | Latest value of keys this plugin last wrote, with plugin id |
-| No `bridge:context` | — | `present: false, reason: 'not-granted'` for keys it last wrote |
-| `bridge:events` | — | Its events appear in `switchboard.events.tail` |
-| No `bridge:events` | — | Its events stay inside the page |
-
-The file’s main example is `feedback.open-count`: it exists in page code, but it does not appear at the bridge because the feedback plugin does not hold `bridge:context`.
+- Adapters should not create panel-toggling commands. That would hand the adapter control over every plugin's panels at once, and blur which plugin an action belongs to
