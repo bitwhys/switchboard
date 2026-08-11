@@ -11,6 +11,7 @@
 		"typecheck": "turbo run typecheck",
 		"test": "turbo run test",
 		"lint": "biome check .",
+		"lint:docs": "node scripts/check-doc-links.mjs",
 		"check": "turbo run build typecheck lint test",
 		"changeset": "changeset"
 	},
