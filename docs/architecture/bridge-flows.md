@@ -1,6 +1,6 @@
 # Bridge flows
 
-**This file owns everything that crosses the wire.** Each flow is drawn once, here, and nowhere else in this directory. The static boxes and boundaries are [`topology.md`](./topology.md)'s subject; who is allowed to appear on the wire at all is [`exposure-model.md`](./exposure-model.md)'s. Normative homes: [bridge §4–§9](../spec/bridge-protocol.md#4-the-wire-envelope), [§13–§14](../spec/bridge-protocol.md#13-active-tab-and-multi-tab).
+This file covers wire behavior: connection and reconnection, snapshot sync, invocation and cancellation, context reads, and events polling. Static process layout is covered in [`topology.md`](./topology.md), and bridge exposure rules are covered in [`exposure-model.md`](./exposure-model.md). Source of truth: [bridge §4–§9](../spec/bridge-protocol.md#4-the-wire-envelope), [§13–§14](../spec/bridge-protocol.md#13-active-tab-and-multi-tab).
 
 Lifelines used throughout: **agent** (any MCP client) · **bridge** (`bridge-mcp` node side: MCP edge + bridge core) · **wire client** (`bridge-mcp` browser export, attached by the adapter's bootstrap) · **kernel** (`core`, in the page).
 
@@ -21,15 +21,15 @@ stateDiagram-v2
     Rejected --> [*]
 ```
 
-- `hello` is the first message on **every** connection, including every reconnection — there is no resumption protocol and no resync protocol. `hello-ok` mints a tab id stable for the connection's lifetime; `hello-reject` carries both protocol versions, both kernel API versions, and a plain-language reason, and both sides surface it — the page renders "reload this tab", the bridge reports it via `switchboard.status` ([bridge §5.3](../spec/bridge-protocol.md#53-rejection), [§11.1](../spec/bridge-protocol.md#111-switchboardstatus)).
-- **The grace period** ([bridge §14.2](../spec/bridge-protocol.md#142-the-grace-period)) is sized so an ordinary page reload reconnects inside it (~3 s recommended). A reconnecting page re-announces an identical snapshot, the diff suppresses all churn, and the common reload causes **zero agent-visible change**. Only a genuinely absent page shrinks the tool list.
-- **Reconnection is deliberately unremarkable** — fresh handshake plus fresh snapshot are the same messages as first connect, which is why the bridge needs **no persistence for correctness**: there is nothing to resume ([bridge §14.3](../spec/bridge-protocol.md#143-reconnection)). Re-establishing the channel (retry, backoff) is the adapter's obligation, not wire protocol ([adapter contract §3.4](../spec/adapter-contract.md#34-reconnection)).
-- **Active-tab failover**: when several tabs are connected, the canonical agent-facing registry mirrors the active tab (most recently focused — tabs send a `focus` notification). If the active tab drops, the bridge fails over to another connected tab, subject to the grace period; the switch reaches agents as an ordinary registry diff ([bridge §13.2](../spec/bridge-protocol.md#132-the-active-tab-model)).
-- With **no page connected at all**, the MCP endpoint stays up: the three built-in tools keep their promises and invoking a page command answers with an actionable `isError` ([bridge §14.1](../spec/bridge-protocol.md#141-the-endpoint-stays-up)).
+- `hello` is the first message on every connection, including reconnections. There is no resume protocol or resync protocol. `hello-ok` mints a tab id stable for the connection lifetime; `hello-reject` carries both protocol versions, both kernel API versions, and a plain-language reason. The page shows "reload this tab," and the bridge reports the status via `switchboard.status` ([bridge §5.3](../spec/bridge-protocol.md#53-rejection), [§11.1](../spec/bridge-protocol.md#111-switchboardstatus)).
+- The grace period ([bridge §14.2](../spec/bridge-protocol.md#142-the-grace-period)) is sized so ordinary page reloads reconnect inside it (~3 s recommended). A reconnecting page re-announces the same snapshot, so a common reload usually produces no agent-visible change. Only a genuinely absent page shrinks the tool list.
+- Reconnection uses the same handshake and snapshot messages as first connect, so no resume state is required for correctness ([bridge §14.3](../spec/bridge-protocol.md#143-reconnection)). Channel retry/backoff remains an adapter concern, not wire protocol ([adapter contract §3.4](../spec/adapter-contract.md#34-reconnection)).
+- Active-tab failover: when several tabs are connected, the canonical agent-facing registry mirrors the active tab (most recently focused; tabs send `focus`). If the active tab drops, the bridge fails over to another connected tab, subject to the grace period; agents receive the switch as a normal registry diff ([bridge §13.2](../spec/bridge-protocol.md#132-the-active-tab-model)).
+- With no connected page, the MCP endpoint stays available: the three built-in tools remain functional, and invoking a page command returns an actionable `isError` ([bridge §14.1](../spec/bridge-protocol.md#141-the-endpoint-stays-up)).
 
 ## Snapshot sync
 
-Registry sync uses **full snapshots, never deltas** — the wire stays dumb and drift is impossible by construction ([bridge §6](../spec/bridge-protocol.md#6-registry-sync-snapshots)):
+Registry sync uses full snapshots and no delta protocol, which avoids drift between page and bridge state ([bridge §6](../spec/bridge-protocol.md#6-registry-sync-snapshots)):
 
 ```mermaid
 sequenceDiagram
@@ -51,7 +51,7 @@ sequenceDiagram
     B-->>A: rebuilt from the canonical registry,<br/>schemas verbatim
 ```
 
-The page computes both filters itself — it holds the manifests ([bridge §6.2](../spec/bridge-protocol.md#62-what-the-page-announces)); a burst of changes yields one debounced message. Change notifications are lossy cache-invalidation hints, never load-bearing: a client that ignores every notification and re-lists still sees the truth ([bridge §10.1](../spec/bridge-protocol.md#101-transport-and-sessions)).
+The page computes both filters itself because it holds the manifests ([bridge §6.2](../spec/bridge-protocol.md#62-what-the-page-announces)); a burst of changes yields one debounced message. Change notifications are lossy cache-invalidation hints: a client that ignores them and re-lists still sees the canonical state ([bridge §10.1](../spec/bridge-protocol.md#101-transport-and-sessions)).
 
 ## Invocation
 
@@ -87,9 +87,9 @@ sequenceDiagram
     B-->>A: tool result (isError on any failure, naming the command)
 ```
 
-- **The wire-pump rule** ([bridge §7.2](../spec/bridge-protocol.md#72-the-wire-pump-rule)) is the load-bearing detail in this drawing: dispatch runs **detached**, and the message listener returns synchronously. A listener that `await`s a running handler stalls the entire wire — *including the `cancel` that would have stopped that very handler*. This was observed in the transport spike, not theorised: a cancel arrived only after a 30-second command completed, purely because dispatch was awaited inline.
-- **Three causes, one path**: agent-side cancellation, the bridge timeout (default 60 s), and agent disconnect mid-call all converge on the same `cancel` message. Cancellation is cooperative and best-effort — a handler that ignores its signal runs to completion; the bridge tolerates either a late `result` (discarded) or silence ([bridge §7.3](../spec/bridge-protocol.md#73-cancellation), [§7.4](../spec/bridge-protocol.md#74-bridge-timeout)).
-- **Disconnect mid-invoke fails immediately** with *page disconnected during invocation; outcome unknown* — the bridge does not wait out the grace period, because the outcome is already unknowable ([bridge §7.5](../spec/bridge-protocol.md#75-disconnect-mid-invoke)).
+- The wire-pump rule ([bridge §7.2](../spec/bridge-protocol.md#72-the-wire-pump-rule)) is that dispatch runs detached and the message listener returns synchronously. If the listener `await`s a running handler, the wire stalls, including delivery of `cancel`. This was observed directly in transport testing when inline awaiting delayed cancellation until command completion.
+- Three causes, one path: agent-side cancellation, bridge timeout (default 60 s), and agent disconnect mid-call all converge on the same `cancel` message. Cancellation is cooperative and best-effort; if a handler ignores its signal and finishes, the bridge tolerates either a late `result` (discarded) or silence ([bridge §7.3](../spec/bridge-protocol.md#73-cancellation), [§7.4](../spec/bridge-protocol.md#74-bridge-timeout)).
+- Disconnect mid-invoke fails immediately with *page disconnected during invocation; outcome unknown*. The bridge does not wait through the grace period because the invocation outcome is already unknown ([bridge §7.5](../spec/bridge-protocol.md#75-disconnect-mid-invoke)).
 
 ## Context reads
 
@@ -117,7 +117,7 @@ The two `present: false` reasons exist so the built-in tool can report something
 
 ## Events → the tail buffer
 
-One-way push into a recording; **agents poll, they are never pushed to** ([bridge §9](../spec/bridge-protocol.md#9-events-and-the-tail-buffer)):
+Events are pushed from page to bridge, then recorded; agents retrieve them by polling (`switchboard.events.tail`) rather than receiving server push ([bridge §9](../spec/bridge-protocol.md#9-events-and-the-tail-buffer)):
 
 ```mermaid
 sequenceDiagram
@@ -132,4 +132,4 @@ sequenceDiagram
     B-->>A: buffered entries, newest-last
 ```
 
-The buffer is a recording kept by the bridge **as a subscriber** — kernel Events stay strictly ephemeral, never replayed, never buffered *in the kernel* ([kernel §7](../spec/kernel-api.md#7-events)). The sequence number makes incremental polling possible; the buffer survives page reloads and disconnections but dies with the dev server — it is in-memory, and Switchboard is not a system of record ([bridge §9.2](../spec/bridge-protocol.md#92-the-tail-buffer), [§14.4](../spec/bridge-protocol.md#144-what-dies-with-the-server)).
+The bridge keeps the tail buffer as a subscriber; kernel Events remain ephemeral and are not buffered in the kernel ([kernel §7](../spec/kernel-api.md#7-events)). Sequence numbers support incremental polling. The buffer survives page reloads and disconnections, but it is process-lifetime only and is cleared when the dev server stops ([bridge §9.2](../spec/bridge-protocol.md#92-the-tail-buffer), [§14.4](../spec/bridge-protocol.md#144-what-dies-with-the-server)).
