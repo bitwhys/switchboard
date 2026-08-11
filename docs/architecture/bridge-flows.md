@@ -25,7 +25,7 @@ stateDiagram-v2
 - The grace period ([bridge §14.2](../spec/bridge-protocol.md#142-the-grace-period)) is sized so ordinary page reloads reconnect inside it (~3 s recommended). A reconnecting page re-announces the same snapshot, so a common reload usually produces no agent-visible change. Only a genuinely absent page shrinks the tool list.
 - Reconnection uses the same handshake and snapshot messages as first connect, so no resume state is required for correctness ([bridge §14.3](../spec/bridge-protocol.md#143-reconnection)). Channel retry/backoff remains an adapter concern, not wire protocol ([adapter contract §3.4](../spec/adapter-contract.md#34-reconnection)).
 - Active-tab failover: when several tabs are connected, the canonical agent-facing registry mirrors the active tab (most recently focused; tabs send `focus`). If the active tab drops, the bridge fails over to another connected tab, subject to the grace period; agents receive the switch as a normal registry diff ([bridge §13.2](../spec/bridge-protocol.md#132-the-active-tab-model)).
-- With no connected page, the MCP endpoint stays available: the three built-in tools remain available and invoking a page command returns an actionable `isError` ([bridge §14.1](../spec/bridge-protocol.md#141-the-endpoint-stays-up)).
+- With no connected page, the MCP endpoint stays available: the three built-in tools remain functional, and invoking a page command returns an actionable `isError` ([bridge §14.1](../spec/bridge-protocol.md#141-the-endpoint-stays-up)).
 
 ## Snapshot sync
 
