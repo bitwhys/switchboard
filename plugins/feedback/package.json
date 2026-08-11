@@ -1,6 +1,6 @@
 {
 	"name": "@switchboard-dev/plugin-feedback",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Reference plugin: annotations and the human → agent → human feedback loop.",
 	"keywords": [
 		"switchboard",

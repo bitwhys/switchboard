@@ -1,6 +1,6 @@
 {
 	"name": "@switchboard-dev/adapter-vite",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Vite adapter: mounts Switchboard and the bridge MCP edge on the Vite dev server.",
 	"keywords": [
 		"switchboard",

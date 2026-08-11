@@ -1,6 +1,6 @@
 {
 	"name": "@switchboard-dev/plugin-scanner",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Reference plugin: on-demand axe-core accessibility scans.",
 	"keywords": [
 		"switchboard",

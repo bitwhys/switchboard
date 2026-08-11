@@ -1,6 +1,6 @@
 {
 	"name": "@switchboard-dev/core",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Switchboard kernel: plugin definition, activation, the four primitives, capabilities, permissions, storage.",
 	"keywords": [
 		"switchboard",

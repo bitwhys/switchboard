@@ -1,6 +1,6 @@
 {
 	"name": "@switchboard-dev/plugin-inspector",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Reference plugin: v1 provider of the dom.inspector@1.0.0 capability (ElementReference, registry, picker).",
 	"keywords": [
 		"switchboard",

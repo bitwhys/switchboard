@@ -1,6 +1,6 @@
 {
 	"name": "@switchboard-dev/adapter-next",
-	"version": "0.0.0",
+	"version": "0.1.0",
 	"description": "Next.js adapter: mounts Switchboard and the bridge MCP edge in a Next.js app.",
 	"keywords": [
 		"switchboard",
