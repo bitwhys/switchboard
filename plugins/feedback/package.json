@@ -2,6 +2,25 @@
 	"name": "@switchboard-dev/plugin-feedback",
 	"version": "0.0.0",
 	"description": "Reference plugin: annotations and the human → agent → human feedback loop.",
+	"keywords": [
+		"switchboard",
+		"devtools",
+		"developer-tools",
+		"switchboard-plugin",
+		"feedback",
+		"annotations",
+		"ai-agents"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/bitwhys/switchboard#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitwhys/switchboard.git",
+		"directory": "plugins/feedback"
+	},
+	"bugs": {
+		"url": "https://github.com/bitwhys/switchboard/issues"
+	},
 	"type": "module",
 	"engines": {
 		"node": ">=20.19"

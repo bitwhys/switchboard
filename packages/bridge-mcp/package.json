@@ -2,6 +2,25 @@
 	"name": "@switchboard-dev/bridge-mcp",
 	"version": "0.0.0",
 	"description": "The page ⇄ agent bridge: Switchboard wire protocol and the MCP edge (Streamable HTTP).",
+	"keywords": [
+		"switchboard",
+		"devtools",
+		"developer-tools",
+		"mcp",
+		"model-context-protocol",
+		"ai-agents",
+		"bridge"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/bitwhys/switchboard#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitwhys/switchboard.git",
+		"directory": "packages/bridge-mcp"
+	},
+	"bugs": {
+		"url": "https://github.com/bitwhys/switchboard/issues"
+	},
 	"type": "module",
 	"engines": {
 		"node": ">=20.19"

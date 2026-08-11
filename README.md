@@ -194,4 +194,4 @@ Work is planned in the open on the issue tracker — see [`docs/agents/issue-tra
 
 ## License
 
-MIT © George Bockari
+MIT — see [`LICENSE`](LICENSE). © 2026 George Bockari.

@@ -2,6 +2,7 @@
 	"name": "switchboard-workspace",
 	"private": true,
 	"type": "module",
+	"license": "MIT",
 	"packageManager": "pnpm@11.17.0",
 	"engines": {
 		"node": ">=20.19"
@@ -14,10 +15,12 @@
 		"lint:docs": "node scripts/check-doc-links.mjs",
 		"lint:specs": "node scripts/check-spec-requirements.mjs",
 		"check": "turbo run build typecheck lint test",
-		"changeset": "changeset"
+		"changeset": "changeset",
+		"release": "turbo run build && changeset publish"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.7",
+		"@changesets/changelog-github": "^0.7.0",
 		"@changesets/cli": "^2.31.1",
 		"@types/node": "^26.1.2",
 		"turbo": "^2.10.8",

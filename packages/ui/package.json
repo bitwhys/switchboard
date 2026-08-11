@@ -2,6 +2,26 @@
 	"name": "@switchboard-dev/ui",
 	"version": "0.0.0",
 	"description": "Headless a11y primitives for Switchboard toolbar adapters — plain-DOM factories for the panel-chrome pattern set P1–P8.",
+	"keywords": [
+		"switchboard",
+		"devtools",
+		"developer-tools",
+		"accessibility",
+		"a11y",
+		"headless",
+		"shadow-dom",
+		"dialog"
+	],
+	"license": "MIT",
+	"homepage": "https://github.com/bitwhys/switchboard#readme",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/bitwhys/switchboard.git",
+		"directory": "packages/ui"
+	},
+	"bugs": {
+		"url": "https://github.com/bitwhys/switchboard/issues"
+	},
 	"type": "module",
 	"engines": {
 		"node": ">=20.19"
