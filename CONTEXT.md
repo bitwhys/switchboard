@@ -22,7 +22,7 @@ Defined by their bridge semantics: Command, Event, and Context can cross to agen
 - **Context** — a named, observable *value*: the latest state, replayed immediately to every new observer. The home of "what is true right now."
   - The boundary rule: *need the latest value later → Context; only announcing a moment → Event.*
 - **Service** — a named, live in-page object shared between plugins. Never serialized, never bridged; the only primitive that stays entirely inside the page.
-- **Wire-legal** — the serializability contract for the three bridgeable primitives: a value is legal iff it survives a strict JSON round-trip unchanged (no dates, binaries, maps, cycles). Binds Command inputs/results, Event payloads, and Context values *unconditionally* — bridge grants never change the contract. Enforced where serialization already happens (the bridge), never policed by the kernel.
+- **Plain-JSON rule** — the serializability contract for the three bridgeable primitives: a value is legal iff it survives a strict JSON round-trip unchanged (no dates, binaries, maps, cycles). Binds Command inputs/results, Event payloads, and Context values *unconditionally* — bridge grants never change the contract. Enforced where serialization already happens (the bridge), never policed by the kernel.
   - The boundary rule: *live object → Service; data → everything else, and data means strict JSON.*
 
 ## Capabilities
@@ -39,19 +39,38 @@ Kernel infrastructure (alongside Disposable), not a fifth primitive: nothing is 
 - **Storage engine** — the swappable backend behind every storage area, chosen by the application developer at kernel construction and invisible to plugins. Physical isolation of areas is the engine's job; the engine seam is public API, so backends beyond the built-in defaults need no kernel changes.
 - **Defensive read** — the documented convention for stored-value shape: storage is untrusted input, validated on read, discarded or defaulted on mismatch. The kernel guarantees only that a plugin's area stays *reachable* across kernel upgrades; the shape of what is inside belongs to the plugin (no kernel migration machinery).
 
+## Diagnostics
+
+Kernel infrastructure: the one place the whole suite's failure words are defined, so every spec links here instead of redefining them.
+
+- **Diagnostics channel** — the single kernel-owned reporting surface for failures and lapses: two severities (`error`, `warning`), a stable `code` per entry, and stamped attribution saying who spoke and who is responsible. Reporting only, never control flow; the application developer subscribes and may switch off the default dev console reporter.
+- **Loud error** — a named `SwitchboardError` carrying a stable code, thrown or rejected at the call site *and* emitted on the channel. Unconditional: dev mode never suppresses it.
+- **Dev-mode warning** — emission with no throw: the report for a lapse that is not fatal (an unknown permission, manifest drift, a second kernel in the tab).
+- **Dev mode** — a construction-time flag, default on, because Switchboard's presence in a bundle is itself the dev signal and the kernel never sniffs the environment. Off drops warnings and the console reporter only.
+
 ## Surfaces & the bridge
 
-- **Bridge** — the translation layer between the page kernel and out-of-page agents; speaks Switchboard's own versioned wire protocol page-side and MCP at the agent-facing edge.
+- **Bridge** — the translation layer between the page kernel and out-of-page agents; speaks Switchboard's own versioned bridge protocol page-side and MCP at the agent-facing edge.
 - **Visibility predicate** (`when`) — a pure function deciding whether a command is *listed* (in UI surfaces and the agent tool list), evaluated over a **tracked-read Context view**: `ctx.get(key)` returns the latest value synchronously (`undefined` if unset), and the predicate re-evaluates only when a key it actually read last run changes — its dependencies *are* its reads. Gates listing, never dispatch, and is never a security boundary.
 - **Behavioral hints** (annotations) — MCP-shaped, untrusted advisories on a command (read-only, destructive, idempotent). Hints for UX and agent policy, never enforcement.
 - **Bridge grant** — a `bridge:*` permission. Default-closed and all-or-nothing per primitive family: without the grant a plugin's registrations don't exist at the bridge (not listed, not dispatchable). Attribution is by *act*: the bridge forwards what a granted plugin registered, emitted, or wrote — never by name ownership.
 - **Reserved namespace** — `switchboard.*` names belong to the kernel itself; no plugin, including first-party reference plugins, may register there. The bridge's **built-in tools** (`switchboard.status`, `switchboard.context.read`, `switchboard.events.tail`) live here: always present, they work — or fail with actionable errors — whether or not a page is connected.
-- **Wire protocol** — the bridge's page-side language: Switchboard's own minimal envelope of typed JSON messages (never MCP, never JSON-RPC), correlated request/response by echoed id, defined as plain objects so any adapter channel can carry them.
-- **Bridge protocol version** — the plain integer gating the wire handshake, bumped only on breaking wire changes. Exact match or clean refusal; the kernel API version travels alongside for diagnostics only. The only real-world mismatch is a stale tab, and the remedy is always reload.
-- **Snapshot sync** — the registry-sync model: the page always sends its complete current registry (on connect and, debounced, on any change); the bridge diffs against canonical state and applies only real deltas to the agent-facing surface. The wire stays dumb, drift is impossible, and reconnect needs no special resync.
+- **Bridge protocol** — the bridge's page-side language: Switchboard's own minimal envelope of typed JSON messages (never MCP, never JSON-RPC), correlated request/response by echoed id, defined as plain objects so any adapter channel can carry them.
+- **Bridge protocol version** — the plain integer gating the handshake, bumped only on breaking protocol changes. Exact match or clean refusal; the kernel API version travels alongside for diagnostics only. The only real-world mismatch is a stale tab, and the remedy is always reload.
+- **Snapshot sync** — the registry-sync model: the page always sends its complete current registry (on connect and, debounced, on any change); the bridge diffs against canonical state and applies only real deltas to the agent-facing surface. The protocol stays dumb, drift is impossible, and reconnect needs no special resync.
 - **Tail buffer** — the bridge's bounded ring buffer of recent events, served to agents as a poll tool. A recording kept by the bridge *as a subscriber* — kernel Events stay strictly ephemeral; the buffer survives page reloads and dies with the dev server.
 - **Active tab** — the one connected page the agent-facing surface mirrors and invocations target: the most recently focused tab, falling back to most recently connected. Every connection carries a stable **tab id** (reserved for future explicit targeting; surfaced in status today).
 - **Grace period** — the short debounce before a departed page's commands leave the tool list, sized so a page reload reconnects invisibly. Only a genuinely absent page shrinks the list — which then tells the truth: built-ins only.
+
+## Adapters & host integration
+
+- **Adapter** — the package that hosts the bridge inside a development server and connects a page kernel to it: `adapter-vite`, `adapter-next`, or a third-party equivalent for another host. Owns both paths, the agent path (the MCP edge) and the page path (the channel). Development only in v1. (The toolbar contract uses the same word for a toolbar implementation; unqualified, "adapter" means this one.)
+- **Page client** — the page half of the bridge protocol, implemented once and shipped as the browser-only export of `bridge-mcp`: handshake, snapshot building, grant filtering, the message loop, plain-JSON checking. Adapters inject it and never reimplement it.
+- **Channel handle** — the single-use, open-only handle an adapter hands the page client for one channel lifetime (`send` / `onMessage` / `onClose`). Live by definition, so nothing buffers before connect; spent once closed, and a reconnect gets a fresh one.
+- **Page bootstrap** — the module an adapter injects in dev that subscribes to the kernel handoff and attaches the page client when a kernel announces itself. The reason an application writes zero bridge code.
+- **Bridge port** — the one knob that lives in two places, the adapter and the agent's MCP client config, so a single environment variable moves both. Default 7654; a taken port fails loudly and is never scanned past, since a bridge belongs to one page kernel and reusing a sibling would serve agents the wrong page.
+- **Kernel handoff** — the page-global rendezvous where a kernel announces itself and the bootstrap subscribes, in either order. First live kernel wins; disposal retracts the announcement, which is the escape hatch for hot reloading and tests.
+- **Switchboard instance** — what `createSwitchboard()` returns: the application developer's own door to the four primitives, the plugin list, and diagnostics, with its acts attributed to the host rather than a plugin. The plugins array *is* the activation order, and `dispose()` tears the kernel down.
 
 ## Toolbar adapter
 
@@ -80,7 +99,7 @@ Domain vocabulary owned by the `dom.inspector` capability, not the kernel — th
 
 Domain vocabulary owned by the feedback reference plugin and its `feedback.sink` capability — not the kernel.
 
-- **Annotation** — a human-authored, route-scoped piece of feedback, optionally anchored to an element by an element description (never an ElementReference). Wire-legal by construction; the unit agents list and resolve.
+- **Annotation** — a human-authored, route-scoped piece of feedback, optionally anchored to an element by an element description (never an ElementReference). Plain JSON by construction; the unit agents list and resolve.
 - **Annotation lifecycle** — `draft` → `open` → `resolved`. Drafts are private working state that survive a reload; submission (draft → open) is the moment an annotation becomes visible to agents and eligible for egress; resolution requires a resolution note saying what was done.
 - **Outbox** — the storage-held set of annotations awaiting action or egress. Working state, never a system of record: an annotation's durable home is wherever a sink puts it.
 - **Sink** — the egress seam: a capability (`feedback.sink`) an application may provide to carry submitted annotations to an external system of record. Probed, never required — absent a sink, the loop still closes locally in the outbox.
