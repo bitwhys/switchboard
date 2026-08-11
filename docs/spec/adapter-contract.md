@@ -58,7 +58,7 @@ The bridge port MUST bind loopback only, and SHOULD bind both loopback literals 
 The adapter hands the page client the channel as single-use connection handles:
 
 ```ts
-interface WireConnection {
+interface ChannelHandle {
   send(message: object): void                       // parsed JSON objects, not strings
   onMessage(cb: (message: object) => void): () => void
   onClose(cb: () => void): () => void

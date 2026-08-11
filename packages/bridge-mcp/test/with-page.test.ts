@@ -12,7 +12,7 @@ import {
 
 // The full agent ⇄ bridge ⇄ page round trip (bridge spec §6–§11), ported
 // from the spike's `with-page` phase (17 checks): real MCP SDK client over
-// real Streamable HTTP, fake page on the wire protocol.
+// real Streamable HTTP, fake page on the Switchboard protocol.
 
 describe("bridge §6–§11 with a connected page", () => {
 	let rig: TestBridge;

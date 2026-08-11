@@ -1,6 +1,6 @@
 // @switchboard-dev/bridge-mcp/node — the bridge component itself, run in the
 // dev-server process (bridge spec §1). Adapters construct a Bridge, ferry
-// wire messages between it and their page channel, and mount (or start) the
+// protocol messages between it and their page channel, and mount (or start) the
 // MCP door.
 
 export {
@@ -28,9 +28,9 @@ export {
 } from "./node/http";
 export { createMcpSession } from "./node/mcp";
 export {
+	type AnnouncedCommand,
 	BRIDGE_PROTOCOL_VERSION,
 	type BridgeMessage,
 	type PageMessage,
-	type WireCommand,
-	type WireMessage,
+	type ProtocolMessage,
 } from "./protocol";

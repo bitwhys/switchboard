@@ -1,13 +1,13 @@
-// Switchboard wire protocol — the page-facing envelope (bridge spec §4–§9,
-// §13). Shared by the node-side bridge and the browser wire client, so
+// The Switchboard protocol — the page-facing message envelope (bridge spec
+// §4–§9, §13). Shared by the node-side bridge and the browser page client, so
 // BRIDGE_PROTOCOL_VERSION is defined exactly once (glue-code decision #38).
 // This module must stay environment-agnostic: no node imports.
 
-/** Bridge spec §2 — plain integer, bumped only on breaking wire changes. */
+/** Bridge spec §2 — plain integer, bumped only on breaking protocol changes. */
 export const BRIDGE_PROTOCOL_VERSION = 1;
 
 /** Bridge spec §6.1 — one announced registry entry, tagged with its owner. */
-export interface WireCommand {
+export interface AnnouncedCommand {
 	/** Command id, verbatim (kernel spec §2, §6.1). */
 	id: string;
 	title: string;
@@ -37,7 +37,7 @@ export interface Hello {
 /** §6.1 — always the COMPLETE current agent-listable surface, never a diff. */
 export interface Snapshot {
 	type: "snapshot";
-	commands: WireCommand[];
+	commands: AnnouncedCommand[];
 }
 
 /** §7.1 — answers an `invoke`, echoing its id. */
@@ -140,4 +140,4 @@ export type BridgeMessage =
 	| Cancel
 	| ContextRead;
 
-export type WireMessage = PageMessage | BridgeMessage;
+export type ProtocolMessage = PageMessage | BridgeMessage;
