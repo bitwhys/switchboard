@@ -6,3 +6,7 @@ dist/
 .turbo/
 coverage/
 *.tsbuildinfo
+
+# Vitest Browser Mode failure artifacts
+**/.vitest-attachments/
+**/__screenshots__/
