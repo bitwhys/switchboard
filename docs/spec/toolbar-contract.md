@@ -224,11 +224,15 @@ The plugin's world begins and ends at the container (§5.3). Deliberately absent
 
 The chrome obligations in §8 bind **every** adapter, not just the first-party one: they are what "provides `toolbar@1`" promises, so accessibility is delivered by the shared chrome once, not re-solved per plugin.
 
+*(Non-normative: the first-party [`@switchboard-dev/ui`](../../packages/ui/) package ships headless plain-DOM factories for these chrome mechanisms, which adapters SHOULD build on. Conformance stays behavioral — an adapter meeting §7–§8 without `ui` is fully conformant.)*
+
 ## 8. Accessibility: the pattern set P1–P8
 
 This section is the one normative home for the panel-chrome accessibility patterns. They were locked by the Shadow DOM research ([`docs/shadow-dom-a11y-patterns.md`](../shadow-dom-a11y-patterns.md)) and validated end-to-end by the chrome spike ([`prototypes/shadow-panel-a11y/`](../../prototypes/shadow-panel-a11y/)): axe-core 4.10.3 reported 0 violations with panels closed and open — demonstrably auditing inside plugin-mounted containers — and a full VoiceOver walkthrough passed in Safari and Chrome with no extra configuration. NVDA and JAWS remain untested; P5's fallback region exists for exactly that reason.
 
 *Consolidates: #10; evidence also #4.*
+
+*(Non-normative: [`@switchboard-dev/ui`](../../packages/ui/) implements the mechanism of each pattern below except P2, which is a rule honored by construction.)*
 
 ### 8.1 P1 — one open shadow root
 
