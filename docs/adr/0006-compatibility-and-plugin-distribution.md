@@ -1,6 +1,6 @@
 # ADR-0006: Fail closed on compatibility and install plugins explicitly
 
-- **Status:** Accepted · 2026-08-12
+- **Status:** Superseded by ADR-0012
 - **Replaces:** Implicit npm discovery and ambiguous single-version behavior
 
 ## Context

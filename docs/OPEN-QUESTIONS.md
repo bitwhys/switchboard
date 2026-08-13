@@ -51,11 +51,11 @@ Freeze payment/card autocomplete tokens, subtree replacement, retained attribute
 
 Freeze the utility version/set, namespace, modifiers, arbitrary-value behavior, and computed-style fallback.
 
-### Q-008 — Separate tool and feedback schemas
+### Q-008 — Separate agent-action and feedback schemas — Resolved by ADR-0012
 
 **Owner:** Core Primitives
 
-Select the JSON Schema draft, stable IDs, versioning, unknown-field policy, grant metadata, and runtime-only registration boundary. Do not add environment projection or repository fields.
+ADR-0012 selects JSON Schema draft 2020-12, stable configuration-local identities, integer schema and action-contract versions, closed project-owned envelopes, separate agent-action and feedback contracts, and atomic definition validation.
 
 ## P2 — Scope choices
 
@@ -65,9 +65,30 @@ Select the JSON Schema draft, stable IDs, versioning, unknown-field policy, gran
 
 Choose self-hostable-only v1 or explicitly scope an optional hosted deployment. Current recommendation: self-hostable-only.
 
-### Q-010 — Standalone extension tool set
+### Q-010 — Standalone extension action set
 
 **Owner:** Extension  
 **Coordinates with:** Core Primitives
 
-Enumerate the finite first-party tools bundled when no embedded application runtime exists.
+Enumerate the finite first-party agent actions registered when no embedded application runtime exists.
+
+### Q-011 — App contribution and capability contract — Resolved by ADR-0012
+
+**Owner:** Core Primitives
+**Coordinates with:** Local Agent Session, Extension
+
+ADR-0012 defines the four contribution types, typed exact-major capability services, single configured environment, requirement injection, UI ownership, target/source seams, failure surface, concurrency, and registration lifecycle.
+
+### Q-012 — Explicit production activation
+
+**Owner:** Extension
+**Coordinates with:** Core Primitives
+
+Define how production-capable apps are explicitly included, mounted, and made visible to selected users without making production activation an automatic consequence of adding the Vite development integration. Preserve ADR-0003's production capability boundary.
+
+### Q-013 — Reference-app validation set
+
+**Owner:** Control Room
+**Coordinates with:** Core Primitives, Evidence & Visual Editing
+
+Choose the two first-party reference apps used to validate the generic extension model. Current recommendation: annotation plus accessibility inspection. Keep their domain behavior outside core and require both to fit without app-specific core exceptions.

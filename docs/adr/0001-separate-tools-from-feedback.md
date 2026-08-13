@@ -1,6 +1,6 @@
 # ADR-0001: Separate tools from feedback
 
-- **Status:** Accepted · 2026-08-12
+- **Status:** Superseded by ADR-0012
 - **Replaces:** “Everything is a command” and `dev+production`
 
 ## Context
